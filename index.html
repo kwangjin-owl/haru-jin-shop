@@ -1,10 +1,36 @@
+요청하신 조건에 맞추어 `index.html`의 텍스트와 상품 목록 영역을 수정한 전체 코드입니다.
+
+### 수정 반영 사항
+
+1. **브라우저 탭 제목 (`<title>`)**: `진 빠지는 하루`로 변경
+
+
+2. **검색 결과 설명 문구 (`<meta name="description">`)**: `자취 10년차, 매일 반복되는 무료한 일상에 지친 사람들을 위해서. 무료한 일상을 달래 줄 아이템들을 소개합니다.`로 변경
+
+
+3. **화면 표시 가게 이름 및 소개 글**:
+* 상단 네비게이션 브랜드 및 히어로 제목을 `진 빠지는 하루`로 변경
+
+
+* 히어로 서브 타이틀을 `자취 10년차의 지친 하루, 무료한 일상을 달래 줄 아이템들을 소개합니다.`로 변경
+
+
+
+
+4. **상품 섹션**: 상품 안내 문구와 함께 가게 콘셉트에 어울리는 아이템 예시(암막 수면 안대, 1인용 미니 뚝배기 세트 등)를 미리 볼 수 있도록 구성
+
+
+
+---
+
+```html
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>하루상점</title>
-<meta name="description" content="매일 쓰는 물건을 고릅니다">
+<title>진 빠지는 하루</title>
+<meta name="description" content="자취 10년차, 매일 반복되는 무료한 일상에 지친 사람들을 위해서. 무료한 일상을 달래 줄 아이템들을 소개합니다.">
 <link rel="stylesheet" href="assets/style.css">
 
 <!-- 태그 관리자 코드가 들어갈 자리 (머리) -->
@@ -15,7 +41,7 @@
 <!-- 태그 관리자 코드가 들어갈 자리 (몸통 맨 위) -->
 
 <header class="site"><div class="wrap">
-  <a class="brand" href="index.html">하루상점</a>
+  <a class="brand" href="index.html">진 빠지는 하루</a>
   <nav class="site">
     <a href="index.html">상품</a>
     <a href="about.html">가게 소개</a>
@@ -25,17 +51,31 @@
 </div></header>
 
 <section class="hero"><div class="wrap">
-  <h1 id="hero-title">하루상점</h1>
-  <p id="hero-tagline">하루를 조금 낫게 만드는 물건을 고릅니다</p>
+  <h1 id="hero-title">진 빠지는 하루</h1>
+  <p id="hero-tagline">자취 10년차의 지친 하루, 무료한 일상을 달래 줄 아이템들을 소개합니다.</p>
 </div></section>
 
 <main><div class="wrap">
   <h2>오늘의 물건</h2>
-  <p class="lead">여섯 가지를 두고 있습니다. 하나씩 눌러 보세요.</p>
-  <div class="grid" id="product-list"></div>
+  <p class="lead">무료한 자취 일상을 달래 줄 물건들입니다. 하나씩 눌러 보세요.</p>
+  <div class="grid" id="product-list">
+    <!-- 자취 10년차 콘셉트에 맞춘 대표 상품 예시 -->
+    <article class="product-card">
+      <div class="thumb"></div>
+      <h3 class="product-title">완전 암막 입체 수면 안대</h3>
+      <p class="product-desc">빛 한 점 없이 깊은 숙면을 돕는 퇴근 후 필수템</p>
+    </article>
+    <article class="product-card">
+      <div class="thumb"></div>
+      <h3 class="product-title">1인용 인덕션 미니 뚝배기 세트</h3>
+      <p class="product-desc">대충 때우던 저녁 한 끼를 제대로 챙겨주는 온기 아이템</p>
+    </article>
+  </div>
 </div></main>
 <footer class="site"><div class="wrap"></div></footer>
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
+
+```
