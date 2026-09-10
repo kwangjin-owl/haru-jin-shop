@@ -1,49 +1,170 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>스파이더맨 상점</title>
-<meta name="description" content="밤에 다니는 사람을 위해, 높은 데서 쓰는 물건을 골라 둡니다">
-<link rel="stylesheet" href="assets/style.css">
+/* ===========================================================
+   하루상점 — 화면을 그리고 장바구니를 다루는 코드
+   이 파일은 고치지 않아도 됩니다. (상품은 shop.js 에 있습니다)
+   =========================================================== */
 
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-WSWMKKFT');</script>
-<!-- End Google Tag Manager -->
-</head>
-<body>
+const won = n => n.toLocaleString("ko-KR") + "원";
+const findProduct = id => PRODUCTS.find(p => p.id === id);
+const qs = key => new URLSearchParams(location.search).get(key);
 
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WSWMKKFT"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+/* --- 장바구니는 브라우저에 저장합니다 --- */
+const Cart = {
+  read() {
+    try { return JSON.parse(localStorage.getItem("haru_cart") || "[]"); }
+    catch (e) { return []; }
+  },
+  write(items) {
+    localStorage.setItem("haru_cart", JSON.stringify(items));
+  },
+  add(id) {
+    const items = Cart.read();
+    const hit = items.find(i => i.id === id);
+    if (hit) hit.qty += 1;
+    else items.push({ id, qty: 1 });
+    Cart.write(items);
 
-<header class="site"><div class="wrap">
-  <a class="brand" href="index.html">스파이더맨 상점</a>
-  <nav class="site">
-    <a href="index.html">상품</a>
-    <a href="about.html">가게 소개</a>
-    <a href="shipping.html">배송·교환</a>
-    <a href="cart.html">장바구니<span class="cart-count">0</span></a>
-  </nav>
-</div></header>
+    // ▼ 여기에 「장바구니에 담았다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
 
-<section class="hero"><div class="wrap">
-  <h1 id="hero-title">스파이더맨 상점</h1>
-  <p id="hero-tagline">높은 데서 쓰는 물건을 골라 둡니다</p>
-</div></section>
+  },
+  remove(id) {
+    Cart.write(Cart.read().filter(i => i.id !== id));
+  },
+  clear() {
+    localStorage.removeItem("haru_cart");
+  },
+  count() {
+    return Cart.read().reduce((sum, i) => sum + i.qty, 0);
+  },
+  total() {
+    return Cart.read().reduce((sum, i) => {
+      const p = findProduct(i.id);
+      return sum + (p ? p.price * i.qty : 0);
+    }, 0);
+  }
+};
 
-<main><div class="wrap">
-  <h2>오늘의 물건</h2>
-  <p class="lead">여섯 가지를 두고 있습니다. 하나씩 눌러 보세요.</p>
-  <div class="grid" id="product-list"></div>
-</div></main>
-<footer class="site"><div class="wrap"></div></footer>
-<script src="assets/shop.js"></script>
-<script src="assets/app.js"></script>
-</body>
-</html>
+/* --- 머리글과 꼬리글 --- */
+function paintChrome() {
+  // 화면마다 제목이 달라야 검색에서 구분됩니다.
+  // 그래서 제목을 통째로 바꾸지 않고 가게 이름만 갈아 끼웁니다.
+  document.title = document.title.replaceAll("하루상점", SHOP.name);
+
+  const brand = document.querySelector(".brand");
+  if (brand) brand.textContent = SHOP.name;
+
+  const badge = document.querySelector(".cart-count");
+  if (badge) badge.textContent = Cart.count();
+
+  const foot = document.querySelector("footer.site .wrap");
+  if (foot) foot.textContent = SHOP.name + " · " + SHOP.tagline;
+}
+
+/* --- 상품 목록 --- */
+function paintList() {
+  const box = document.querySelector("#product-list");
+  if (!box) return;
+
+  document.querySelector("#hero-title").textContent = SHOP.name;
+  document.querySelector("#hero-tagline").textContent = SHOP.tagline;
+
+  box.innerHTML = PRODUCTS.map(p => `
+    <a class="card" href="product.html?id=${p.id}">
+      <div class="thumb">${p.emoji}</div>
+      <h3>${p.name}</h3>
+      <p class="sum">${p.summary}</p>
+      <div class="price">${won(p.price)}</div>
+    </a>`).join("");
+}
+
+/* --- 상품 상세 --- */
+function paintDetail() {
+  const box = document.querySelector("#product-detail");
+  if (!box) return;
+
+  const p = findProduct(qs("id"));
+  if (!p) { box.innerHTML = '<p class="empty">그런 상품이 없습니다.</p>'; return; }
+
+  document.title = p.name + " — " + SHOP.name;
+  box.innerHTML = `
+    <div class="thumb">${p.emoji}</div>
+    <div>
+      <h1>${p.name}</h1>
+      <div class="price">${won(p.price)}</div>
+      <div class="body prose">${p.detail.map(t => `<p>${t}</p>`).join("")}</div>
+      <button class="btn" id="add-to-cart">장바구니에 담기</button>
+    </div>`;
+
+  document.querySelector("#add-to-cart").addEventListener("click", () => {
+    Cart.add(p.id);
+    location.href = "cart.html";
+  });
+}
+
+/* --- 장바구니 --- */
+function paintCart() {
+  const box = document.querySelector("#cart-box");
+  if (!box) return;
+
+  const items = Cart.read();
+  if (items.length === 0) {
+    box.innerHTML = '<p class="empty">장바구니가 비어 있습니다.</p>';
+    return;
+  }
+
+  box.innerHTML = `
+    <table class="cart">
+      <tr><th>상품</th><th>수량</th><th>금액</th><th></th></tr>
+      ${items.map(i => {
+        const p = findProduct(i.id);
+        if (!p) return "";
+        return `<tr>
+          <td>${p.emoji} ${p.name}</td>
+          <td>${i.qty}</td>
+          <td>${won(p.price * i.qty)}</td>
+          <td><button class="btn ghost drop" data-id="${p.id}">빼기</button></td>
+        </tr>`;
+      }).join("")}
+    </table>
+    <div class="total">합계 ${won(Cart.total())}</div>
+    <a class="btn" href="checkout.html">결제하기</a>`;
+
+  box.querySelectorAll(".drop").forEach(b => {
+    b.addEventListener("click", () => { Cart.remove(b.dataset.id); location.reload(); });
+  });
+}
+
+/* --- 결제 --- */
+function paintCheckout() {
+  const form = document.querySelector("#pay-form");
+  if (!form) return;
+
+  const sum = document.querySelector("#pay-total");
+  if (sum) sum.textContent = won(Cart.total());
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+
+    // ▼ 여기에 「결제를 시작했다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+
+    Cart.clear();
+    location.href = "done.html";
+  });
+}
+
+/* --- 가게 소개·배송 안내 글 --- */
+function paintProse() {
+  const about = document.querySelector("#about-body");
+  if (about) about.innerHTML = SHOP.about.map(t => `<p>${t}</p>`).join("");
+
+  const ship = document.querySelector("#shipping-body");
+  if (ship) ship.innerHTML = SHOP.shipping.map(t => `<p>${t}</p>`).join("");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  paintChrome();
+  paintList();
+  paintDetail();
+  paintCart();
+  paintCheckout();
+  paintProse();
+});
