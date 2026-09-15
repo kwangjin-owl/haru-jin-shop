@@ -23,6 +23,7 @@ const Cart = {
     else items.push({ id, qty: 1 });
     Cart.write(items);
 
+    // ▼ add_to_cart — 상품이 장바구니에 담긴 직후입니다.
     // 담은 상품의 이름과 가격을 상품 목록에서 찾아 온다
 const p = findProduct(id);
 // 통로가 이미 있으면 그대로 쓰고, 없을 때만 새로 만든다
@@ -160,12 +161,15 @@ function paintCheckout() {
   const sum = document.querySelector("#pay-total");
   if (sum) sum.textContent = won(Cart.total());
 
-  // ▼ 여기에 「결제를 시작했다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+  // ▼ begin_checkout — 결제 화면이 열린 직후입니다. 아직 제출 전이며, 화면당 한 번만 지나갑니다.
+  //    여기에 「결제를 시작했다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
 
   form.addEventListener("submit", e => {
     e.preventDefault();
 
-    // ▼ 여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+    // ▼ purchase — 결제 제출이 끝난 직후입니다. 아래 Cart.clear() 로 장바구니를 비우기 전이라
+    //    여기서는 아직 담긴 상품을 읽을 수 있습니다.
+    //    여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
 
     Cart.clear();
     location.href = "done.html";
