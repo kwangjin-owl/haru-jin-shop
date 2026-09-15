@@ -183,6 +183,39 @@ function paintCheckout() {
 
   // ▼ begin_checkout — 결제 화면이 열린 직후입니다. 아직 제출 전이며, 화면당 한 번만 지나갑니다.
   //    여기에 「결제를 시작했다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+  // 장바구니에 담긴 줄을 읽어 온다 - 한 줄에 상품 하나와 수량이 들어 있다
+  const cartItems = Cart.read();
+  // 담긴 줄마다 상품 목록에서 이름과 가격을 찾아 상품 상자로 만든다
+  // 상품 목록에서 사라진 상품은 값을 읽을 수 없으니 뺀다
+  const checkoutItems = cartItems
+    .map(i => {
+      const p = findProduct(i.id);
+      if (!p) return null;
+      return { item_id: p.id, item_name: p.name, price: p.price, quantity: i.qty };
+    })
+    .filter(it => it !== null);
+  // 합계 - 가게가 이미 같은 셈을 하고 있어 그 값을 그대로 쓴다 (가격 × 수량의 합, 배송비는 없다)
+  const checkoutValue = Cart.total();
+  // 통로가 이미 있으면 그대로 쓰고, 없을 때만 새로 만든다
+  window.dataLayer = window.dataLayer || [];
+  // 앞에서 넣은 상품 값이 섞이지 않게 먼저 비운다
+  dataLayer.push({ ecommerce: null });
+  // 통로 끝에 한 덩어리를 넣는다 - 넣는 순간이 태그 관리자가 듣는 순간
+  dataLayer.push({
+    // 무슨 일이 일어났나 - 계획서 이름 글자 그대로
+    event: "begin_checkout",
+    // 무료 배송인가 - 계획서대로 ecommerce 밖에 둔다
+    free_shipping: checkoutValue >= 50000 ? "yes" : "no",
+    // 같이 보내는 상품 값 묶음
+    ecommerce: {
+      // 어느 나라 돈인가
+      currency: "KRW",
+      // 금액 - 장바구니 상품 합계
+      value: checkoutValue,
+      // 담긴 상품 상자 전체를 목록에 넣는다
+      items: checkoutItems
+    }
+  });
 
   form.addEventListener("submit", e => {
     e.preventDefault();
