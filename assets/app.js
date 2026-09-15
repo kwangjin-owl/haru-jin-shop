@@ -223,6 +223,41 @@ function paintCheckout() {
     // ▼ purchase — 결제 제출이 끝난 직후입니다. 아래 Cart.clear() 로 장바구니를 비우기 전이라
     //    여기서는 아직 담긴 상품을 읽을 수 있습니다.
     //    여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+    // 주문 번호 - 시각(밀리초)과 무작위 글자를 붙여 만든다
+    const orderId = "HARU-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    // 장바구니에 담긴 줄을 읽어 온다 - 비우기 전이라 아직 읽을 수 있다
+    const purchaseCartItems = Cart.read();
+    // 담긴 줄마다 상품 목록에서 이름과 가격을 찾아 상품 상자로 만든다
+    // 상품 목록에서 사라진 상품은 값을 읽을 수 없으니 뺀다
+    const purchaseItems = purchaseCartItems
+      .map(i => {
+        const p = findProduct(i.id);
+        if (!p) return null;
+        return { item_id: p.id, item_name: p.name, price: p.price, quantity: i.qty };
+      })
+      .filter(it => it !== null);
+    // 합계 - 가게가 이미 같은 셈을 하고 있어 그 값을 그대로 쓴다 (가격 × 수량의 합, 배송비는 없다)
+    const purchaseValue = Cart.total();
+    // 통로가 이미 있으면 그대로 쓰고, 없을 때만 새로 만든다
+    window.dataLayer = window.dataLayer || [];
+    // 앞에서 넣은 상품 값이 섞이지 않게 먼저 비운다
+    dataLayer.push({ ecommerce: null });
+    // 통로 끝에 한 덩어리를 넣는다 - 넣는 순간이 태그 관리자가 듣는 순간
+    dataLayer.push({
+      // 무슨 일이 일어났나 - 계획서 이름 글자 그대로
+      event: "purchase",
+      // 같이 보내는 상품 값 묶음
+      ecommerce: {
+        // 주문마다 겹치지 않는 주문 번호
+        transaction_id: orderId,
+        // 어느 나라 돈인가
+        currency: "KRW",
+        // 금액 - 주문한 상품 합계
+        value: purchaseValue,
+        // 주문한 상품 상자 전체를 목록에 넣는다
+        items: purchaseItems
+      }
+    });
 
     Cart.clear();
     location.href = "done.html";
