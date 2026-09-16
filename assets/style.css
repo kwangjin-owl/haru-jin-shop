@@ -73,3 +73,19 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
   .hero{padding:36px 0 28px}
   .hero h1{font-size:26px}
 }
+
+/* 동의 배너 — 화면 아래에 붙습니다 */
+.consent{position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:var(--card);border-top:1px solid var(--line);
+  box-shadow:0 -2px 14px rgba(29,27,23,.08)}
+.consent .wrap{display:flex;align-items:center;gap:20px;padding-top:16px;padding-bottom:16px}
+.consent p{margin:0;font-size:13.5px;color:var(--sub)}
+.consent-buttons{margin-left:auto;display:flex;gap:10px;flex-shrink:0}
+.consent .btn{padding:9px 20px;font-size:14px}
+.consent-reopen{display:block;margin-top:10px;color:var(--sub);font-size:13px}
+
+@media (max-width:640px){
+  .consent .wrap{flex-direction:column;align-items:stretch;gap:12px}
+  .consent-buttons{margin-left:0}
+  .consent-buttons .btn{flex:1;text-align:center}
+}
