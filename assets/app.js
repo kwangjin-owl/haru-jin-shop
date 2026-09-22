@@ -181,6 +181,25 @@ function paintCheckout() {
   const sum = document.querySelector("#pay-total");
   if (sum) sum.textContent = won(Cart.total());
 
+  // 결제 화면 맨 위 한 줄 - 지금 결제 중인 상품과 수량, 배송비를 이어 붙여 보여 준다
+  const summaryBox = document.querySelector("#pay-summary");
+  if (summaryBox) {
+    // 담긴 줄마다 상품 이름과 수량을 "이름 2개" 꼴로 적는다 (없어진 상품은 뺀다)
+    const parts = Cart.read()
+      .map(i => {
+        const p = findProduct(i.id);
+        return p ? p.name + " " + i.qty + "개" : null;
+      })
+      .filter(t => t !== null);
+    // 배송비 - 5만 원 이상이면 없고, 그 아래는 3,000원 (배송·교환 안내와 같은 기준)
+    const shippingFee = Cart.total() >= 50000 ? 0 : 3000;
+    const shippingText = shippingFee === 0 ? "배송비 무료" : "배송비 " + won(shippingFee);
+    // 담긴 것이 없으면 상품 자리는 비워 두고 배송비만 적지 않는다
+    summaryBox.textContent = parts.length === 0
+      ? "장바구니가 비어 있습니다."
+      : parts.join(", ") + " · " + shippingText;
+  }
+
   // ▼ begin_checkout — 결제 화면이 열린 직후입니다. 아직 제출 전이며, 화면당 한 번만 지나갑니다.
   //    여기에 「결제를 시작했다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
   // 장바구니에 담긴 줄을 읽어 온다 - 한 줄에 상품 하나와 수량이 들어 있다
