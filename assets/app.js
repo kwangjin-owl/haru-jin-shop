@@ -178,10 +178,25 @@ function paintCheckout() {
   const form = document.querySelector("#pay-form");
   if (!form) return;
 
-  const sum = document.querySelector("#pay-total");
-  if (sum) sum.textContent = won(Cart.total());
+  // 상품 금액 - 가격 × 수량의 합. 배송비는 들어 있지 않다
+  const itemsTotal = Cart.total();
+  // 배송비 - 5만 원 이상이면 없고, 그 아래는 3,000원 (배송·교환 안내와 같은 기준)
+  // 담긴 것이 없으면 배송비도 없다
+  const shippingFee = (itemsTotal === 0 || itemsTotal >= 50000) ? 0 : 3000;
+  // 손님이 실제로 낼 금액 - 상품 금액에 배송비를 더한 값
+  const payTotal = itemsTotal + shippingFee;
 
-  // 결제 화면 맨 위 한 줄 - 지금 결제 중인 상품과 수량, 배송비를 이어 붙여 보여 준다
+  // 상품 금액과 배송비를 각각 적어, 합계에 무엇이 들어 있는지 보이게 한다
+  const itemsBox = document.querySelector("#pay-items");
+  if (itemsBox) itemsBox.textContent = won(itemsTotal);
+  const shipBox = document.querySelector("#pay-ship");
+  if (shipBox) shipBox.textContent = shippingFee === 0 ? "무료" : won(shippingFee);
+
+  const sum = document.querySelector("#pay-total");
+  if (sum) sum.textContent = won(payTotal);
+
+  // 결제 화면 맨 위 한 줄 - 지금 결제 중인 상품과 수량을 이어 붙여 보여 준다
+  // 배송비는 아래 합계 칸에서 따로 적으므로 여기서는 빼고 상품만 적는다
   const summaryBox = document.querySelector("#pay-summary");
   if (summaryBox) {
     // 담긴 줄마다 상품 이름과 수량을 "이름 2개" 꼴로 적는다 (없어진 상품은 뺀다)
@@ -191,13 +206,9 @@ function paintCheckout() {
         return p ? p.name + " " + i.qty + "개" : null;
       })
       .filter(t => t !== null);
-    // 배송비 - 5만 원 이상이면 없고, 그 아래는 3,000원 (배송·교환 안내와 같은 기준)
-    const shippingFee = Cart.total() >= 50000 ? 0 : 3000;
-    const shippingText = shippingFee === 0 ? "배송비 무료" : "배송비 " + won(shippingFee);
-    // 담긴 것이 없으면 상품 자리는 비워 두고 배송비만 적지 않는다
     summaryBox.textContent = parts.length === 0
       ? "장바구니가 비어 있습니다."
-      : parts.join(", ") + " · " + shippingText;
+      : parts.join(", ");
   }
 
   // ▼ begin_checkout — 결제 화면이 열린 직후입니다. 아직 제출 전이며, 화면당 한 번만 지나갑니다.
@@ -229,7 +240,8 @@ function paintCheckout() {
     ecommerce: {
       // 어느 나라 돈인가
       currency: "KRW",
-      // 금액 - 장바구니 상품 합계
+      // 금액 - 장바구니 상품 합계(배송비 뺀 값)
+      // 화면 합계와 다르다: 화면은 배송비를 더해 보여 주지만 value 에는 일부러 넣지 않는다
       value: checkoutValue,
       // 담긴 상품 상자 전체를 목록에 넣는다
       items: checkoutItems
@@ -271,7 +283,8 @@ function paintCheckout() {
         transaction_id: orderId,
         // 어느 나라 돈인가
         currency: "KRW",
-        // 금액 - 주문한 상품 합계
+        // 금액 - 주문한 상품 합계(배송비 뺀 값)
+        // 화면 합계와 다르다: 화면은 배송비를 더해 보여 주지만 value 에는 일부러 넣지 않는다
         value: purchaseValue,
         // 주문한 상품 상자 전체를 목록에 넣는다
         items: purchaseItems
