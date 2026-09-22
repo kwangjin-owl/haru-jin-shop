@@ -1,5 +1,5 @@
 /* ===========================================================
-   하루상점 — 화면을 그리고 장바구니를 다루는 코드
+   진 빠지는 하루 — 화면을 그리고 장바구니를 다루는 코드
    이 파일은 고치지 않아도 됩니다. (상품은 shop.js 에 있습니다)
    =========================================================== */
 
@@ -67,7 +67,8 @@ dataLayer.push({
 function paintChrome() {
   // 화면마다 제목이 달라야 검색에서 구분됩니다.
   // 그래서 제목을 통째로 바꾸지 않고 가게 이름만 갈아 끼웁니다.
-  document.title = document.title.replaceAll("하루상점", SHOP.name);
+  // 앞의 이름은 HTML 제목에 적혀 있는 이름이라 그 글자와 같아야 찾아냅니다.
+  document.title = document.title.replaceAll("진 빠지는 하루", SHOP.name);
 
   const brand = document.querySelector(".brand");
   if (brand) brand.textContent = SHOP.name;
