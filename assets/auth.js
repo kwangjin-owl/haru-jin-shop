@@ -85,7 +85,7 @@ if (resend) resend.addEventListener("click", async () => {
   } catch (err) {
     msg.textContent = err.code === "auth/too-many-requests"
       ? "잠시 뒤에 다시 눌러 주세요."
-      : (err.code || String(err));
+      : "문제가 생겼어요. 조금 뒤에 다시 시도해 주세요.";
   }
 });
 

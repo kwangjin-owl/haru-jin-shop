@@ -98,6 +98,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     messageEl.hidden = false;
   }
 
+  // 실패했을 때 손님에게 보일 말 - 표에 없는 코드는 아래 기본 문구를 쓴다 (코드와 영어 문장은 보이지 않는다)
+  const ERROR_TEXT = {
+    "auth/invalid-credential": "이메일이나 비밀번호가 맞지 않습니다.",
+    "auth/email-already-in-use": "이미 가입된 이메일입니다.",
+    "auth/weak-password": "비밀번호가 기준(6자 이상)에 못 미칩니다.",
+    "auth/invalid-email": "올바른 이메일 모양이 아닙니다."
+  };
+  const ERROR_DEFAULT = "문제가 생겼어요. 조금 뒤에 다시 시도해 주세요.";
+  const errorText = (err) => ERROR_TEXT[err && err.code] || ERROR_DEFAULT;
+
   // 처리하는 동안 단추를 잠가 두 번 눌리지 않게 한다
   const buttons = document.querySelectorAll("#auth-form button");
   function lock(on) { buttons.forEach(b => { b.disabled = on; }); }
@@ -112,7 +122,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const next = new URLSearchParams(location.search).get("next");
       if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
     } catch (err) {
-      show(err.code || String(err), "err");
+      show(errorText(err), "err");
     }
     lock(false);
   }
@@ -138,7 +148,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       await signOut(auth);
       show("✓ 로그아웃했습니다.", "ok");
     } catch (err) {
-      show(err.code || String(err), "err");
+      show(errorText(err), "err");
     }
   });
 
@@ -153,7 +163,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       show("메일을 보냈습니다. 가입된 주소라면 곧 도착합니다.", "ok");
     } catch (err) {
       if (err.code === "auth/user-not-found") show("메일을 보냈습니다. 가입된 주소라면 곧 도착합니다.", "ok");
-      else show(err.code || String(err), "err");
+      else show(errorText(err), "err");
     }
     lock(false);
   });
