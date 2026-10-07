@@ -5,7 +5,7 @@
      로그인하지 않았으면 login.html 로 돌려보낸다
    =========================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
@@ -17,6 +17,8 @@ const firebaseConfig = {
 };
 
 const auth = getAuth(initializeApp(firebaseConfig));
+// 인증 메일을 한국어로 보낸다
+auth.languageCode = "ko";
 
 // 로그아웃 - 끝나면 첫 화면으로 간다
 async function logout() {
@@ -56,7 +58,7 @@ function renderNav(user) {
 }
 
 // 로그인해야 볼 수 있는 화면 - 확인이 끝난 뒤에야 보여 준다
-function guard(user) {
+async function guard(user) {
   const page = document.querySelector("[data-auth-required]");
   if (!page) return;
   if (!user) {
@@ -64,10 +66,28 @@ function guard(user) {
     location.replace("login.html?next=" + encodeURIComponent(here));
     return;
   }
+  // 열 때마다 인증 여부를 서버에서 새로 읽는다 (읽지 못하면 가진 값 그대로)
+  try { await user.reload(); } catch (e) { /* 네트워크 문제 - 가진 값으로 보여 준다 */ }
   const mail = document.querySelector("[data-auth-email]");
   if (mail) mail.textContent = user.email;
+  const verify = document.querySelector("[data-verify]");
+  if (verify) verify.hidden = user.emailVerified;
   page.hidden = false;
 }
+
+// 「인증 메일 다시 보내기」 - 너무 자주 누르면 잠시 기다리라고 알려 준다
+const resend = document.querySelector("[data-resend]");
+if (resend) resend.addEventListener("click", async () => {
+  const msg = document.querySelector("[data-resend-message]");
+  try {
+    await sendEmailVerification(auth.currentUser);
+    msg.textContent = "인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.";
+  } catch (err) {
+    msg.textContent = err.code === "auth/too-many-requests"
+      ? "잠시 뒤에 다시 눌러 주세요."
+      : (err.code || String(err));
+  }
+});
 
 // 로그인 상태를 묻는 곳은 여기 한 군데입니다
 onAuthStateChanged(auth, (user) => {

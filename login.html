@@ -60,6 +60,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     getAuth,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    sendEmailVerification,
     signOut
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
@@ -74,6 +75,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  // 인증 메일을 한국어로 보낸다
+  auth.languageCode = "ko";
 
   const emailEl = document.getElementById("email");
   const passwordEl = document.getElementById("password");
@@ -84,7 +87,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   async function run(action, okText) {
     try {
       const cred = await action(auth, emailEl.value.trim(), passwordEl.value);
-      show(okText(cred));
+      show(await okText(cred));
       // 마이페이지처럼 가려던 화면이 있으면 잠깐 메시지를 보여 준 뒤 보낸다
       const next = new URLSearchParams(location.search).get("next");
       if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
@@ -94,14 +97,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
 
   document.getElementById("btn-signup").addEventListener("click", () =>
-    run(createUserWithEmailAndPassword, (c) => {
+    run(createUserWithEmailAndPassword, async (c) => {
       // ▼ sign_up — 가입이 성공한 직후 한 번만. 이메일·비밀번호는 넣지 않는다
       window.dataLayer = window.dataLayer || [];
       dataLayer.push({
         event: "sign_up",
         method: "email"
       });
-      return "가입됐습니다: " + c.user.email;
+      // 인증 메일 보내기가 끝난 뒤에야 다음 화면으로 넘어간다 (실패하면 오류 코드가 보인다)
+      await sendEmailVerification(c.user);
+      return "인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.";
     }));
 
   document.getElementById("btn-login").addEventListener("click", () =>

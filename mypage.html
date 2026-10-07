@@ -41,6 +41,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <p class="lead">로그인한 이메일</p>
   <form class="pay" onsubmit="return false">
     <p style="margin:0 0 18px;font-weight:600" data-auth-email></p>
+    <div data-verify hidden>
+      <p class="lead" style="margin:0 0 12px">아직 이메일 인증이 되지 않았습니다. 메일의 링크를 눌러 인증해 주세요.</p>
+      <button class="btn" type="button" data-resend>인증 메일 다시 보내기</button>
+      <p class="lead" style="margin:10px 0 18px" data-resend-message role="status"></p>
+    </div>
     <button class="btn ghost" type="button" data-logout>로그아웃</button>
   </form>
 </div></main>
