@@ -84,6 +84,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     try {
       const cred = await action(auth, emailEl.value.trim(), passwordEl.value);
       show(okText(cred));
+      // 마이페이지처럼 가려던 화면이 있으면 잠깐 메시지를 보여 준 뒤 보낸다
+      const next = new URLSearchParams(location.search).get("next");
+      if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
     } catch (err) {
       show(err.code || String(err));
     }
@@ -112,5 +115,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
   });
 </script>
+<script type="module" src="assets/auth.js"></script>
 </body>
 </html>

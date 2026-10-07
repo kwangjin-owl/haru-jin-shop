@@ -92,3 +92,9 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
   .consent-buttons{margin-left:0}
   .consent-buttons .btn{flex:1;text-align:center}
 }
+
+/* 로그인 상태 — 헤더 오른쪽 */
+.auth-nav{display:inline-flex;align-items:center;gap:14px}
+.auth-email{color:var(--ink)}
+.auth-logout{background:none;border:0;padding:0;font:inherit;color:var(--sub);cursor:pointer}
+.auth-logout:hover{color:var(--ink)}
