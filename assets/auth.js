@@ -92,6 +92,8 @@ if (resend) resend.addEventListener("click", async () => {
 // 로그인 상태를 묻는 곳은 여기 한 군데입니다
 onAuthStateChanged(auth, (user) => {
   renderNav(user);
+  // data-only-logged-in 이 붙은 것은 로그인했을 때만 보인다
+  document.querySelectorAll("[data-only-logged-in]").forEach(el => { el.hidden = !user; });
   guard(user);
 });
 

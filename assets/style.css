@@ -109,3 +109,4 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
   color:var(--sub);text-decoration:underline;cursor:pointer}
 .linkbtn:hover{color:var(--ink)}
 #auth-form button:disabled{opacity:.55;cursor:default}
+[hidden]{display:none !important}
