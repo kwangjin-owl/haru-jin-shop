@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로그인 · 진 빠지는 하루</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">진 빠지는 하루</a>
+  <nav class="site">
+    <a href="index.html">상품</a>
+    <a href="about.html">가게 소개</a>
+    <a href="shipping.html">배송·교환</a>
+    <a href="cart.html">장바구니<span class="cart-count">0</span></a>
+  </nav>
+</div></header>
+
+<main><div class="wrap">
+  <h2>로그인</h2>
+  <form id="auth-form" autocomplete="on">
+    <p><label>이메일<br><input type="email" id="email" autocomplete="email" required></label></p>
+    <p><label>비밀번호<br><input type="password" id="password" autocomplete="current-password" required></label></p>
+    <p>
+      <button type="button" id="btn-signup">가입</button>
+      <button type="button" id="btn-login">로그인</button>
+      <button type="button" id="btn-logout">로그아웃</button>
+    </p>
+  </form>
+  <p id="auth-message" role="status"></p>
+</div></main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
+    authDomain: "haru-jin-shop.firebaseapp.com",
+    projectId: "haru-jin-shop",
+    storageBucket: "haru-jin-shop.firebasestorage.app",
+    messagingSenderId: "405082377069",
+    appId: "1:405082377069:web:50b28f8cf84308faa02864"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const emailEl = document.getElementById("email");
+  const passwordEl = document.getElementById("password");
+  const messageEl = document.getElementById("auth-message");
+
+  function show(text) { messageEl.textContent = text; }
+
+  async function run(action, okText) {
+    try {
+      const cred = await action(auth, emailEl.value.trim(), passwordEl.value);
+      show(okText(cred));
+    } catch (err) {
+      show(err.code || String(err));
+    }
+  }
+
+  document.getElementById("btn-signup").addEventListener("click", () =>
+    run(createUserWithEmailAndPassword, (c) => "가입됐습니다: " + c.user.email));
+
+  document.getElementById("btn-login").addEventListener("click", () =>
+    run(signInWithEmailAndPassword, (c) => "로그인됐습니다: " + c.user.email));
+
+  document.getElementById("btn-logout").addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      show("로그아웃됐습니다.");
+    } catch (err) {
+      show(err.code || String(err));
+    }
+  });
+</script>
+</body>
+</html>
