@@ -98,3 +98,14 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
 .auth-email{color:var(--ink)}
 .auth-logout{background:none;border:0;padding:0;font:inherit;color:var(--sub);cursor:pointer}
 .auth-logout:hover{color:var(--ink)}
+
+/* 로그인 화면 — 결과 알림과 작은 링크 단추 */
+.auth-status{margin:18px 0 0;padding:12px 14px;border-radius:8px;font-size:14px;font-weight:600;
+  border:1px solid var(--line);color:var(--ink)}
+.auth-status.ok{background:#eef6ee;border-color:#9cc59c;color:#25602b}
+.auth-status.err{background:#fbefee;border-color:#e0a6a0;color:#9a2b22}
+.auth-status.busy{background:#f3efe7;color:var(--sub);font-weight:400}
+.linkbtn{display:block;background:none;border:0;padding:0;margin:12px 0 4px;font:inherit;font-size:13px;
+  color:var(--sub);text-decoration:underline;cursor:pointer}
+.linkbtn:hover{color:var(--ink)}
+#auth-form button:disabled{opacity:.55;cursor:default}

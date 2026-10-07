@@ -45,9 +45,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="6자 이상">
     <button class="btn" type="button" id="btn-signup">가입</button>
     <button class="btn" type="button" id="btn-login">로그인</button>
+    <button class="linkbtn" type="button" id="btn-reset">비밀번호를 잊으셨나요?</button>
     <button class="btn ghost" type="button" id="btn-logout">로그아웃</button>
     <p class="lead" style="margin:14px 0 0;font-size:12.5px">도서관이나 학교처럼 같이 쓰는 컴퓨터에서는, 진 빠지는 하루를 다 보신 뒤 로그아웃을 눌러 주세요.</p>
-    <p class="lead" id="auth-message" role="status" style="margin:18px 0 0"></p>
+    <p class="auth-status" id="auth-message" role="status" hidden></p>
   </form>
 </div></main>
 <footer class="site"><div class="wrap"></div></footer>
@@ -61,6 +62,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendEmailVerification,
+    sendPasswordResetEmail,
     signOut
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
@@ -82,18 +84,30 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const passwordEl = document.getElementById("password");
   const messageEl = document.getElementById("auth-message");
 
-  function show(text) { messageEl.textContent = text; }
+  // kind: "ok"(성공) · "err"(실패) · "busy"(처리 중) - 색이 달라 무슨 일이 일어났는지 바로 보인다
+  function show(text, kind) {
+    messageEl.textContent = text;
+    messageEl.className = "auth-status " + (kind || "ok");
+    messageEl.hidden = false;
+  }
+
+  // 처리하는 동안 단추를 잠가 두 번 눌리지 않게 한다
+  const buttons = document.querySelectorAll("#auth-form button");
+  function lock(on) { buttons.forEach(b => { b.disabled = on; }); }
 
   async function run(action, okText) {
+    show("처리 중입니다…", "busy");
+    lock(true);
     try {
       const cred = await action(auth, emailEl.value.trim(), passwordEl.value);
-      show(await okText(cred));
+      show(await okText(cred), "ok");
       // 마이페이지처럼 가려던 화면이 있으면 잠깐 메시지를 보여 준 뒤 보낸다
       const next = new URLSearchParams(location.search).get("next");
       if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
     } catch (err) {
-      show(err.code || String(err));
+      show(err.code || String(err), "err");
     }
+    lock(false);
   }
 
   document.getElementById("btn-signup").addEventListener("click", () =>
@@ -106,19 +120,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       });
       // 인증 메일 보내기가 끝난 뒤에야 다음 화면으로 넘어간다 (실패하면 오류 코드가 보인다)
       await sendEmailVerification(c.user);
-      return "인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.";
+      return "✓ 가입했습니다. 인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.";
     }));
 
   document.getElementById("btn-login").addEventListener("click", () =>
-    run(signInWithEmailAndPassword, (c) => "로그인됐습니다: " + c.user.email));
+    run(signInWithEmailAndPassword, (c) => "✓ 로그인했습니다: " + c.user.email));
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
     try {
       await signOut(auth);
-      show("로그아웃됐습니다.");
+      show("✓ 로그아웃했습니다.", "ok");
     } catch (err) {
-      show(err.code || String(err));
+      show(err.code || String(err), "err");
     }
+  });
+
+  // 비밀번호 재설정 메일 - 가입된 주소인지 아닌지 알려 주지 않는다
+  document.getElementById("btn-reset").addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    if (!email) { show("위 이메일 칸에 주소를 먼저 적어 주세요.", "err"); return; }
+    show("처리 중입니다…", "busy");
+    lock(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      show("메일을 보냈습니다. 가입된 주소라면 곧 도착합니다.", "ok");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") show("메일을 보냈습니다. 가입된 주소라면 곧 도착합니다.", "ok");
+      else show(err.code || String(err), "err");
+    }
+    lock(false);
   });
 </script>
 <script type="module" src="assets/auth.js"></script>
