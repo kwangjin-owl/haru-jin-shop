@@ -5,8 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>로그인 · 진 빠지는 하루</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- 동의 기본값 — 태그 관리자보다 먼저 읽혀야 합니다 -->
+<script src="assets/consent.js"></script>
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KK3DL5B2');</script>
+<!-- End Google Tag Manager -->
+
 </head>
 <body>
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KK3DL5B2"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 
 <header class="site"><div class="wrap">
   <a class="brand" href="index.html">진 빠지는 하루</a>
@@ -20,18 +37,22 @@
 
 <main><div class="wrap">
   <h2>로그인</h2>
-  <form id="auth-form" autocomplete="on">
-    <p><label>이메일<br><input type="email" id="email" autocomplete="email" required></label></p>
-    <p><label>비밀번호<br><input type="password" id="password" autocomplete="current-password" required></label></p>
-    <p>
-      <button type="button" id="btn-signup">가입</button>
-      <button type="button" id="btn-login">로그인</button>
-      <button type="button" id="btn-logout">로그아웃</button>
-    </p>
+  <p class="lead">이메일과 비밀번호로 가입하거나 로그인합니다.</p>
+  <form class="pay" id="auth-form">
+    <label for="email">이메일</label>
+    <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+    <label for="password">비밀번호</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="6자 이상">
+    <button class="btn" type="button" id="btn-signup">가입</button>
+    <button class="btn" type="button" id="btn-login">로그인</button>
+    <button class="btn ghost" type="button" id="btn-logout">로그아웃</button>
+    <p class="lead" id="auth-message" role="status" style="margin:18px 0 0"></p>
   </form>
-  <p id="auth-message" role="status"></p>
 </div></main>
-
+<footer class="site"><div class="wrap"></div></footer>
+<script src="assets/shop.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/consent-ui.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import {
@@ -69,7 +90,15 @@
   }
 
   document.getElementById("btn-signup").addEventListener("click", () =>
-    run(createUserWithEmailAndPassword, (c) => "가입됐습니다: " + c.user.email));
+    run(createUserWithEmailAndPassword, (c) => {
+      // ▼ sign_up — 가입이 성공한 직후 한 번만. 이메일·비밀번호는 넣지 않는다
+      window.dataLayer = window.dataLayer || [];
+      dataLayer.push({
+        event: "sign_up",
+        method: "email"
+      });
+      return "가입됐습니다: " + c.user.email;
+    }));
 
   document.getElementById("btn-login").addEventListener("click", () =>
     run(signInWithEmailAndPassword, (c) => "로그인됐습니다: " + c.user.email));
