@@ -39,6 +39,16 @@ function renderNav(user) {
     const who = document.createElement("span");
     who.className = "auth-email";
     who.textContent = user.email;
+    // 프로필 사진이 있는 계정(구글 등)만 이메일 옆에 작고 동그랗게 보여 준다
+    if (user.photoURL) {
+      const img = document.createElement("img");
+      img.className = "auth-photo";
+      img.src = user.photoURL;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => img.remove());
+      box.append(img);
+    }
     const my = document.createElement("a");
     my.href = "mypage.html";
     my.textContent = "마이페이지";
