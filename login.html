@@ -48,9 +48,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="btn" type="button" id="btn-signup">가입</button>
       <button class="btn" type="button" id="btn-login">로그인</button>
       <button class="linkbtn" type="button" id="btn-reset">비밀번호를 잊으셨나요?</button>
+      <button class="btn ghost" type="button" id="btn-google" style="display:block;width:100%;margin-top:14px">Google로 계속하기</button>
     </div>
     <!-- 로그인했을 때만 보인다 -->
     <div data-only-logged-in hidden>
+      <p class="lead" style="margin:0 0 6px" data-auth-name-line hidden>이름: <strong data-auth-name></strong></p>
       <p class="lead" style="margin:0 0 14px">로그인한 이메일: <strong data-auth-email></strong></p>
       <button class="btn ghost" type="button" id="btn-logout">로그아웃</button>
     </div>
@@ -70,6 +72,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     signInWithEmailAndPassword,
     sendEmailVerification,
     sendPasswordResetEmail,
+    GoogleAuthProvider,
+    signInWithPopup,
     signOut
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
@@ -150,6 +154,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     } catch (err) {
       show(errorText(err), "err");
     }
+  });
+
+  // Google 로 계속하기 - 팝업으로 열고, 들어오면 구글 계정의 이름을 보여 준다
+  document.getElementById("btn-google").addEventListener("click", async () => {
+    show("처리 중입니다…", "busy");
+    lock(true);
+    try {
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      show("✓ Google로 로그인했습니다: " + (cred.user.displayName || cred.user.email), "ok");
+      const next = new URLSearchParams(location.search).get("next");
+      if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
+    } catch (err) {
+      show(errorText(err), "err");
+    }
+    lock(false);
   });
 
   // 비밀번호 재설정 메일 - 가입된 주소인지 아닌지 알려 주지 않는다

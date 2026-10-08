@@ -96,6 +96,9 @@ onAuthStateChanged(auth, (user) => {
   document.querySelectorAll("[data-only-logged-in]").forEach(el => { el.hidden = !user; });
   // data-only-logged-out 이 붙은 것은 로그인하지 않았을 때만 보인다
   document.querySelectorAll("[data-only-logged-out]").forEach(el => { el.hidden = !!user; });
+  // 이름이 있는 계정(구글 등)이면 이름도 보여 준다
+  document.querySelectorAll("[data-auth-name]").forEach(el => { el.textContent = user && user.displayName ? user.displayName : ""; });
+  document.querySelectorAll("[data-auth-name-line]").forEach(el => { el.hidden = !(user && user.displayName); });
   // 로그인한 이메일을 적어 두는 자리
   document.querySelectorAll("[data-auth-email]").forEach(el => { el.textContent = user ? user.email : ""; });
   guard(user);
