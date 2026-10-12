@@ -5,7 +5,7 @@
      로그인하지 않았으면 login.html 로 돌려보낸다
    =========================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, sendEmailVerification, GoogleAuthProvider, linkWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
@@ -80,10 +80,34 @@ async function guard(user) {
   try { await user.reload(); } catch (e) { /* 네트워크 문제 - 가진 값으로 보여 준다 */ }
   const mail = document.querySelector("[data-auth-email]");
   if (mail) mail.textContent = user.email;
+  renderGoogleLink(user);
   const verify = document.querySelector("[data-verify]");
   if (verify) verify.hidden = user.emailVerified;
   page.hidden = false;
 }
+
+// Google 계정이 이미 붙어 있으면 「연결됨」, 아니면 「Google 계정 연결하기」 단추를 보여 준다
+function renderGoogleLink(user) {
+  const linked = user.providerData.some(p => p.providerId === "google.com");
+  const btn = document.querySelector("[data-link-google]");
+  const done = document.querySelector("[data-google-linked]");
+  if (btn) btn.hidden = linked;
+  if (done) done.hidden = !linked;
+}
+
+// 지금 로그인한 계정에 Google 로그인을 하나 더 붙인다 (새 계정을 만들지 않는다)
+const linkBtn = document.querySelector("[data-link-google]");
+if (linkBtn) linkBtn.addEventListener("click", async () => {
+  const msg = document.querySelector("[data-link-message]");
+  msg.textContent = "";
+  try {
+    await linkWithPopup(auth.currentUser, new GoogleAuthProvider());
+    renderGoogleLink(auth.currentUser);
+    msg.textContent = "Google 계정을 연결했어요.";
+  } catch (err) {
+    msg.textContent = err.code || String(err);
+  }
+});
 
 // 「인증 메일 다시 보내기」 - 너무 자주 누르면 잠시 기다리라고 알려 준다
 const resend = document.querySelector("[data-resend]");
