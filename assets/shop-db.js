@@ -28,8 +28,11 @@ let seen = new Set();
 let lastDoc = null;
 let readTotal = 0;
 
-// 한 쪽(셋)을 가져온다 - after 가 있으면 그 문서 다음부터
-// 거르기 · 줄 세우기 · 개수를 Firestore 쿼리가 한다: 보이기(isVisible)가 true 인 것만, 가격이 비싼 것부터, 셋만
+// 한 번에 가져오는 개수 - 처음 목록도 「더 보기」도 이만큼씩
+const PAGE_SIZE = 2;
+
+// 한 쪽(둘)을 가져온다 - after 가 있으면 그 문서 다음부터
+// 거르기 · 줄 세우기 · 개수를 Firestore 쿼리가 한다: 보이기(isVisible)가 true 인 것만, 가격이 비싼 것부터, 둘만
 async function fetchPage(after) {
   // 처음 쪽
   if (!after) {
@@ -37,7 +40,7 @@ async function fetchPage(after) {
       collection(db, "products"),
       where("isVisible", "==", true),
       orderBy("price", "desc"),
-      limit(3)
+      limit(PAGE_SIZE)
     ));
   }
   // 「더 보기」 - 마지막으로 받은 문서(after)를 startAfter 에 넘겨 그다음 문서부터 가져온다
@@ -46,7 +49,7 @@ async function fetchPage(after) {
     where("isVisible", "==", true),
     orderBy("price", "desc"),
     startAfter(after),
-    limit(3)
+    limit(PAGE_SIZE)
   ));
 }
 
@@ -63,9 +66,9 @@ function takePage(snap) {
   // 읽은 문서 수는 지금까지 실제로 받아 온 장수를 더한 값이다
   readTotal += snap.size;
   paintList(shown, readTotal);
-  // 셋보다 적게 왔으면 더 가져올 것이 없다
+  // 둘보다 적게 왔으면 더 가져올 것이 없다
   const more = document.querySelector("#load-more");
-  if (more) more.hidden = snap.size < 3;
+  if (more) more.hidden = snap.size < PAGE_SIZE;
 }
 
 async function loadList() {
@@ -79,7 +82,7 @@ async function loadList() {
   }
 }
 
-// 「더 보기」 - 지금 보이는 마지막 상품 다음부터 셋을 더 가져와 아래에 이어 붙인다
+// 「더 보기」 - 지금 보이는 마지막 상품 다음부터 둘을 더 가져와 아래에 이어 붙인다
 function setupMore() {
   const more = document.querySelector("#load-more");
   const msg = document.querySelector("#more-message");
