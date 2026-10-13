@@ -16,7 +16,9 @@ const firebaseConfig = {
   appId: "1:405082377069:web:50b28f8cf84308faa02864"
 };
 
-const auth = getAuth(initializeApp(firebaseConfig));
+// 다른 파일(shop-db.js)도 같은 앱을 쓰도록 내보낸다
+export const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 // 인증 메일을 한국어로 보낸다
 auth.languageCode = "ko";
 

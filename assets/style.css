@@ -121,3 +121,9 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
 
 /* 헤더의 프로필 사진 */
 .auth-photo{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle}
+
+/* 상품 재고, 읽은 문서 수, 상품 올리기 */
+.card .stock{color:var(--sub);font-size:13px;margin-top:6px}
+.card .stock.out{color:#9a2b22;font-weight:600}
+.read-count{font-size:13px;margin:18px 0 0}
+.upload-box{margin:22px 0 0}

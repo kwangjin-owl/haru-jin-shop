@@ -45,6 +45,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <h2>오늘의 물건</h2>
   <p class="lead">여섯 가지를 두고 있습니다. 하나씩 눌러 보세요.</p>
   <div class="grid" id="product-list"></div>
+  <p class="lead read-count" id="read-count"></p>
+  <div class="upload-box">
+    <button class="btn" type="button" id="upload-products" data-only-logged-in hidden>상품 올리기</button>
+    <p class="lead" id="upload-message" role="status" style="margin:10px 0 0"></p>
+  </div>
 </div></main>
 <footer class="site"><div class="wrap"></div></footer>
 <script src="assets/shop.js"></script>
@@ -71,5 +76,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   console.log("Firebase 연결:", app.options.projectId);
 </script>
 <script type="module" src="assets/auth.js"></script>
+<script type="module" src="assets/shop-db.js"></script>
 </body>
 </html>

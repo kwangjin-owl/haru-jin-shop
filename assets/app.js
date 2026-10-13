@@ -81,28 +81,42 @@ function paintChrome() {
 }
 
 /* --- 상품 목록 --- */
-function paintList() {
+// items 가 없으면 「불러오는 중」만 보이고, Firestore 에서 읽은 뒤 shop-db.js 가 items 를 채워 다시 부른다
+function paintList(items, readCount) {
   const box = document.querySelector("#product-list");
   if (!box) return;
 
   document.querySelector("#hero-title").textContent = SHOP.name;
   document.querySelector("#hero-tagline").textContent = SHOP.tagline;
 
-  box.innerHTML = PRODUCTS.map(p => `
+  if (!items) { box.innerHTML = '<p class="empty">상품을 불러오는 중입니다…</p>'; return; }
+  if (items.length === 0) box.innerHTML = '<p class="empty">지금 보여 드릴 상품이 없습니다.</p>';
+  else box.innerHTML = items.map(p => `
     <a class="card" href="product.html?id=${p.id}">
       <div class="thumb">${p.emoji}</div>
       <h3>${p.name}</h3>
       <p class="sum">${p.summary}</p>
       <div class="price">${won(p.price)}</div>
+      <div class="stock${p.stock === 0 ? " out" : ""}">${p.stock === 0 ? "품절" : "재고 " + p.stock + "개"}</div>
     </a>`).join("");
+  showReadCount(readCount);
+}
+
+// 「이번 화면에서 읽은 문서 N장」 - 이 화면을 그리려고 Firestore 에서 실제로 읽은 문서 수
+function showReadCount(n) {
+  const el = document.querySelector("#read-count");
+  if (el) el.textContent = "이번 화면에서 읽은 문서 " + n + "장";
 }
 
 /* --- 상품 상세 --- */
-function paintDetail() {
+// p 가 undefined 면 「불러오는 중」만 보이고, Firestore 에서 읽은 뒤 shop-db.js 가 상품(p)과 읽은 문서 수를 채워 다시 부른다
+// p 가 null 이면 없는(또는 숨긴) 상품이다
+function paintDetail(p, readCount) {
   const box = document.querySelector("#product-detail");
   if (!box) return;
 
-  const p = findProduct(qs("id"));
+  if (p === undefined) { box.innerHTML = '<p class="empty">불러오는 중입니다…</p>'; return; }
+  showReadCount(readCount);
   if (!p) { box.innerHTML = '<p class="empty">그런 상품이 없습니다.</p>'; return; }
 
   document.title = p.name + " — " + SHOP.name;
