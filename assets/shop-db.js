@@ -24,11 +24,11 @@ function merge(id, data) {
 /* --- 상품 목록 --- */
 async function loadList() {
   try {
-    // 거르기 · 줄 세우기 · 개수를 Firestore 쿼리가 한다: 보이기(isVisible)가 true 인 것만, 가격이 싼 것부터, 셋만
+    // 거르기 · 줄 세우기 · 개수를 Firestore 쿼리가 한다: 보이기(isVisible)가 true 인 것만, 가격이 비싼 것부터, 셋만
     const snap = await getDocs(query(
       collection(db, "products"),
       where("isVisible", "==", true),
-      orderBy("price", "asc"),
+      orderBy("price", "desc"),
       limit(3)
     ));
     const items = [];
