@@ -6,7 +6,7 @@
    =========================================================== */
 import { app } from "./auth.js";
 import {
-  getFirestore, collection, query, where, getDocs, getDoc, doc, runTransaction, serverTimestamp
+  getFirestore, collection, query, where, orderBy, limit, getDocs, getDoc, doc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -24,14 +24,21 @@ function merge(id, data) {
 /* --- 상품 목록 --- */
 async function loadList() {
   try {
-    // 보이기(isVisible)가 true 인 문서만 읽는다
-    const snap = await getDocs(query(collection(db, "products"), where("isVisible", "==", true)));
+    // 거르기 · 줄 세우기 · 개수를 Firestore 쿼리가 한다: 보이기(isVisible)가 true 인 것만, 가격이 싼 것부터, 셋만
+    const snap = await getDocs(query(
+      collection(db, "products"),
+      where("isVisible", "==", true),
+      orderBy("price", "asc"),
+      limit(3)
+    ));
     const items = [];
     snap.forEach(d => { const p = merge(d.id, d.data()); if (p) items.push(p); });
-    items.sort((a, b) => PRODUCTS.findIndex(x => x.id === a.id) - PRODUCTS.findIndex(x => x.id === b.id));
+    // 순서는 쿼리가 준 그대로(가격 순)이고, 읽은 문서 수는 이번에 실제로 받아 온 장수다
     paintList(items, snap.size);
   } catch (err) {
-    document.querySelector("#product-list").textContent = errorText(err);
+    // 오류 글은 줄이지 않고 콘솔에 그대로 찍고, 화면에는 한 줄만 보여 준다
+    console.error(err);
+    document.querySelector("#product-list").textContent = "목록을 불러오지 못했습니다";
   }
 }
 
