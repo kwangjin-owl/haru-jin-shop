@@ -105,7 +105,10 @@ if (linkBtn) linkBtn.addEventListener("click", async () => {
     renderGoogleLink(auth.currentUser);
     msg.textContent = "Google 계정을 연결했어요.";
   } catch (err) {
-    msg.textContent = err.code || String(err);
+    // 이미 다른 계정에 붙어 있는 구글 계정이면 코드 대신 문구로 알려 준다
+    msg.textContent = err.code === "auth/credential-already-in-use"
+      ? "이미 다른 계정에 연결된 Google 계정입니다."
+      : (err.code || String(err));
   }
 });
 
