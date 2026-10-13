@@ -5,11 +5,13 @@
    - Firebase 앱은 auth.js 가 만든 것을 그대로 씁니다 (설정과 버전 같음)
    =========================================================== */
 import { app } from "./auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, getDoc, doc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 // 오류 글을 줄이지 않고 그대로 보여 주기 위한 글
 const errorText = (err) => (err && err.code ? err.code + " — " : "") + (err && err.message ? err.message : String(err));
@@ -108,9 +110,60 @@ async function loadDetail() {
     // 숨긴 상품(isVisible 이 true 가 아님)은 없는 것처럼 보여 준다
     const p = data && data.isVisible === true ? merge(snap.id, data) : null;
     paintDetail(p, snap.exists() ? 1 : 0);
+    // 보여 줄 상품이 있을 때만 「바로 주문」 단추를 보인다
+    if (p) { orderProductId = p.id; document.querySelector("#order-now").hidden = false; }
   } catch (err) {
     document.querySelector("#product-detail").textContent = errorText(err);
   }
+}
+
+/* --- 바로 주문 (상품 상세) --- */
+let orderProductId = null;
+
+// 재고가 모자랄 때 던지는 오류 - 화면에는 「재고가 없습니다」만 보여 준다
+class OutOfStock extends Error {}
+
+function setupOrder() {
+  const btn = document.querySelector("#order-now");
+  const msg = document.querySelector("#order-message");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    msg.textContent = "";
+    // 로그인 확인이 끝날 때까지 기다린 뒤 지금 로그인한 사람을 본다
+    await auth.authStateReady();
+    const user = auth.currentUser;
+    if (!user) { msg.textContent = "로그인이 필요합니다"; return; }
+
+    btn.disabled = true;
+    msg.textContent = "주문하는 중입니다…";
+    try {
+      const productRef = doc(db, "products", orderProductId);
+      let ordered = "";
+      // 재고 확인 · 주문 문서 쓰기 · 재고 차감을 한 트랜잭션으로 - 둘 다 되거나 둘 다 안 된다
+      await runTransaction(db, async (t) => {
+        const snap = await t.get(productRef);
+        if (!snap.exists()) throw new Error("상품 문서가 없습니다: " + orderProductId);
+        const d = snap.data();
+        // 재고가 1 이상일 때만 주문한다
+        if (!(typeof d.stock === "number" && d.stock >= 1)) throw new OutOfStock();
+        ordered = d.name;
+        // 주문 문서 한 장 - 자동 ID, 필드는 다섯 개만
+        t.set(doc(collection(db, "orders")), {
+          userId: user.uid,
+          items: [{ productId: snap.id, name: d.name, price: d.price, quantity: 1 }],
+          totalPrice: d.price * 1,
+          status: "paid",
+          createdAt: serverTimestamp()
+        });
+        // 재고를 1 줄인다
+        t.update(productRef, { stock: d.stock - 1 });
+      });
+      msg.textContent = "주문했습니다: " + ordered + " 1개";
+    } catch (err) {
+      msg.textContent = err instanceof OutOfStock ? "재고가 없습니다" : errorText(err);
+    }
+    btn.disabled = false;
+  });
 }
 
 /* --- 상품 올리기 (로그인한 사람에게만 단추가 보인다 - 보이고 숨기는 일은 auth.js 가 한다) --- */
@@ -159,7 +212,7 @@ function setupUpload() {
 
 function run() {
   if (document.querySelector("#product-list")) { loadList(); setupMore(); setupUpload(); }
-  if (document.querySelector("#product-detail")) loadDetail();
+  if (document.querySelector("#product-detail")) { loadDetail(); setupOrder(); }
 }
 // app.js 의 「불러오는 중」 그리기가 먼저 끝난 뒤에 읽는다
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
