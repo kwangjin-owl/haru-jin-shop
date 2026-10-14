@@ -7,7 +7,7 @@
 import { app } from "./auth.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
-  getFirestore, collection, query, where, onSnapshot
+  getFirestore, collection, query, where, onSnapshot, getDocs
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -55,6 +55,51 @@ function paint(snap) {
   box.replaceChildren(table);
 }
 
+// 내 주문만 고르는 쿼리 - 듣기와 「다시 확인」이 같은 것을 쓴다
+const myOrdersQuery = (uid) => query(collection(db, "orders"), where("userId", "==", uid));
+
+// 주문이 있고 전부 delivered 또는 canceled 이면 더 바뀔 일이 없다
+// (하나라도 paid · preparing · shipped 등 다른 값이면 계속 듣는다)
+const isAllDone = (snap) => snap.size > 0 &&
+  snap.docs.every(d => d.data().status === "delivered" || d.data().status === "canceled");
+
+// 듣기를 멈춘 뒤 목록 아래에 붙는 줄 - 멈춤 안내(모두 끝났을 때)와 「다시 확인」 버튼
+// 이 줄은 리스너가 해제된 뒤에만 만들어지므로, 듣는 동안에는 버튼이 보이지 않는다
+function appendStoppedRow(user, withNote) {
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:14px 0 0";
+  if (withNote) {
+    const note = document.createElement("p");
+    note.className = "lead";
+    note.style.margin = "0";
+    note.textContent = "모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.";
+    row.append(note);
+  }
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn ghost";
+  btn.textContent = "다시 확인";
+  const msg = document.createElement("span");
+  msg.className = "lead";
+  msg.style.margin = "0";
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    msg.textContent = "";
+    try {
+      // getDocs 로 한 번만 읽어 와 다시 그린다 - 리스너는 다시 걸지 않는다
+      const snap = await getDocs(myOrdersQuery(user.uid));
+      paint(snap);
+      appendStoppedRow(user, isAllDone(snap));
+    } catch (err) {
+      console.error(err);
+      msg.textContent = (err.code ? err.code + " — " : "") + err.message;
+      btn.disabled = false;
+    }
+  });
+  row.append(btn, msg);
+  box.append(row);
+}
+
 async function start() {
   if (!box || listening) return;
   // 로그인한 사람이 누구인지 확인된 뒤에 듣기 시작한다
@@ -65,23 +110,16 @@ async function start() {
 
   // onSnapshot 이 돌려주는 함수를 받아 두었다가, 더 바뀔 일이 없으면 불러서 듣기를 그만둔다
   const unsubscribe = onSnapshot(
-    query(collection(db, "orders"), where("userId", "==", user.uid)),
+    myOrdersQuery(user.uid),
     (snap) => {
       console.log("[주문 알림] 주문 " + snap.size + "건, 바뀐 문서 " + snap.docChanges().length + "건");
       paint(snap);
 
-      // 주문이 있고 전부 delivered 또는 canceled 이면 더 바뀔 일이 없다
-      // (하나라도 paid · preparing · shipped 등 다른 값이면 계속 듣는다)
-      const allDone = snap.size > 0 &&
-        snap.docs.every(d => d.data().status === "delivered" || d.data().status === "canceled");
-      if (allDone) {
+      if (isAllDone(snap)) {
         unsubscribe();
         console.log("[그만 듣기] 모든 주문이 delivered 또는 canceled 라서 내 주문 듣기를 멈췄습니다 (주문 " + snap.size + "건)");
-        const note = document.createElement("p");
-        note.className = "lead";
-        note.style.margin = "14px 0 0";
-        note.textContent = "모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.";
-        box.append(note);
+        // 멈춤 안내 옆에 「다시 확인」 버튼을 보여 준다
+        appendStoppedRow(user, true);
       }
     },
     (err) => {
