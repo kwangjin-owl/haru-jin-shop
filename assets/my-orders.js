@@ -63,11 +63,26 @@ async function start() {
   if (!user) return;
   listening = true;
 
-  onSnapshot(
+  // onSnapshot 이 돌려주는 함수를 받아 두었다가, 더 바뀔 일이 없으면 불러서 듣기를 그만둔다
+  const unsubscribe = onSnapshot(
     query(collection(db, "orders"), where("userId", "==", user.uid)),
     (snap) => {
       console.log("[주문 알림] 주문 " + snap.size + "건, 바뀐 문서 " + snap.docChanges().length + "건");
       paint(snap);
+
+      // 주문이 있고 전부 delivered 또는 canceled 이면 더 바뀔 일이 없다
+      // (하나라도 paid · preparing · shipped 등 다른 값이면 계속 듣는다)
+      const allDone = snap.size > 0 &&
+        snap.docs.every(d => d.data().status === "delivered" || d.data().status === "canceled");
+      if (allDone) {
+        unsubscribe();
+        console.log("[그만 듣기] 모든 주문이 delivered 또는 canceled 라서 내 주문 듣기를 멈췄습니다 (주문 " + snap.size + "건)");
+        const note = document.createElement("p");
+        note.className = "lead";
+        note.style.margin = "14px 0 0";
+        note.textContent = "모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.";
+        box.append(note);
+      }
     },
     (err) => {
       console.error(err);

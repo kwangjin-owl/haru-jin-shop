@@ -126,7 +126,11 @@ function paintDetail(p, readCount) {
       <h1>${p.name}</h1>
       <div class="price">${won(p.price)}</div>
       <div class="body prose">${p.detail.map(t => `<p>${t}</p>`).join("")}</div>
-      <button class="btn" id="add-to-cart">장바구니에 담기</button>
+      <div class="order-actions">
+        <button class="btn" id="add-to-cart">장바구니에 담기</button>
+        <button class="btn ghost" type="button" id="order-now" hidden>바로 주문</button>
+      </div>
+      <p class="lead" id="order-message" role="status" style="margin:10px 0 0"></p>
     </div>`;
 
   // ▼ view_item — 상품 상세 화면이 열린 직후입니다.

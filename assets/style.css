@@ -127,3 +127,14 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
 .card .stock.out{color:#9a2b22;font-weight:600}
 .read-count{font-size:13px;margin:18px 0 0}
 .upload-box{margin:22px 0 0}
+
+/* 상세 화면 — 장바구니에 담기 · 바로 주문 단추 줄 */
+.order-actions{display:flex;flex-wrap:wrap;gap:10px}
+
+/* 휴대폰 — 헤더는 두 줄로 쌓고, 메뉴는 줄바꿈한다 */
+@media (max-width:640px){
+  header.site .wrap{flex-wrap:wrap;height:auto;padding-top:12px;padding-bottom:10px;gap:4px 16px}
+  nav.site{margin-left:0;width:100%;flex-wrap:wrap;gap:4px 14px;font-size:13px}
+  .auth-nav{flex-wrap:wrap;gap:4px 12px;max-width:100%}
+  .auth-email{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
