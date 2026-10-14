@@ -138,3 +138,11 @@ footer.site{border-top:1px solid var(--line);padding:30px 0;color:var(--sub);fon
   .auth-nav{flex-wrap:wrap;gap:4px 12px;max-width:100%}
   .auth-email{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+/* 내 주문 — 네 단계 줄 */
+table.cart td.steps-cell{padding-top:0}
+ol.steps{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+ol.steps li{flex:1;text-align:center;font-size:12.5px;color:var(--sub);
+  border-top:4px solid var(--line);padding-top:6px}
+ol.steps li.done{border-top-color:var(--accent)}
+ol.steps li.now{border-top-color:var(--accent);color:var(--accent);font-weight:700}

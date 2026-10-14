@@ -22,6 +22,34 @@ function orderedAt(data) {
   return data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
 }
 
+// status 값 -> 손님이 읽는 말과 단계 번호(0 이면 단계 줄에 넣지 않는다)
+// 저장된 값은 바꾸지 않고, 화면에 보여 주는 말만 바꾼다
+const STATUS = {
+  paid:      { label: "결제 완료",   step: 1 },
+  preparing: { label: "상품 준비 중", step: 2 },
+  shipped:   { label: "배송 중",     step: 3 },
+  delivered: { label: "배송 완료",   step: 4 },
+  canceled:  { label: "주문 취소",   step: 0 }
+};
+// 단계 줄에 적는 말 - 위 표의 1~4단계 순서와 같다
+const STEP_LABELS = ["결제 완료", "상품 준비 중", "배송 중", "배송 완료"];
+// 다섯 값이 아닌 값은 이렇게 보여 준다
+const UNKNOWN_LABEL = "확인 중";
+
+// 네 단계 줄 - 지금 단계까지는 채우고, 지금 단계는 눈에 띄게 표시한다
+function stepsLine(step) {
+  const ol = document.createElement("ol");
+  ol.className = "steps";
+  STEP_LABELS.forEach((text, i) => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    if (i + 1 < step) li.className = "done";
+    if (i + 1 === step) { li.className = "now"; li.setAttribute("aria-current", "step"); }
+    ol.append(li);
+  });
+  return ol;
+}
+
 function paint(snap) {
   // 최신순 정렬은 쿼리가 아니라 여기서 한다
   const rows = snap.docs
@@ -44,13 +72,21 @@ function paint(snap) {
   rows.forEach(r => {
     const tr = table.insertRow();
     const names = Array.isArray(r.items) ? r.items.map(i => i.name).join(", ") : "";
+    // 표에 없는 값(영어 값 포함)은 「확인 중」으로 보여 준다
+    const known = Object.hasOwn(STATUS, r.status) ? STATUS[r.status] : null;
     [
       orderedAt(r).toLocaleDateString("ko-KR"),
       names,
       Number(r.totalPrice).toLocaleString("ko-KR") + "원",
-      // status 는 저장된 값 그대로
-      String(r.status)
+      known ? known.label : UNKNOWN_LABEL
     ].forEach(t => { tr.insertCell().textContent = t; });
+    // 단계 줄은 1~4단계 주문에만 - 주문 취소와 확인 중에는 말만 보여 준다
+    if (known && known.step > 0) {
+      const cell = table.insertRow().insertCell();
+      cell.colSpan = 4;
+      cell.className = "steps-cell";
+      cell.append(stepsLine(known.step));
+    }
   });
   box.replaceChildren(table);
 }
