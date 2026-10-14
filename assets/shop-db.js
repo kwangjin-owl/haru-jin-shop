@@ -111,7 +111,8 @@ async function loadDetail() {
     const p = data && data.isVisible === true ? merge(snap.id, data) : null;
     paintDetail(p, snap.exists() ? 1 : 0);
     // 보여 줄 상품이 있을 때만 「바로 주문」 단추를 보인다
-    if (p) { orderProductId = p.id; document.querySelector("#order-now").hidden = false; }
+    // 단추는 상품을 그린 뒤에야 생기므로, 클릭 처리도 여기서 한 번 붙인다
+    if (p) { orderProductId = p.id; document.querySelector("#order-now").hidden = false; setupOrder(); }
   } catch (err) {
     document.querySelector("#product-detail").textContent = errorText(err);
   }
@@ -212,7 +213,7 @@ function setupUpload() {
 
 function run() {
   if (document.querySelector("#product-list")) { loadList(); setupMore(); setupUpload(); }
-  if (document.querySelector("#product-detail")) { loadDetail(); setupOrder(); }
+  if (document.querySelector("#product-detail")) loadDetail();
 }
 // app.js 의 「불러오는 중」 그리기가 먼저 끝난 뒤에 읽는다
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
