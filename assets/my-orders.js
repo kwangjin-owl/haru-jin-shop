@@ -7,7 +7,7 @@
 import { app } from "./auth.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
-  getFirestore, collection, query, where, onSnapshot, getDocs
+  getFirestore, collection, query, where, onSnapshot, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -50,6 +50,72 @@ function stepsLine(step) {
   return ol;
 }
 
+/* --- 주문 취소 (status 가 paid 인 주문에만 단추가 붙는다) --- */
+// 저장 중인 주문 / 취소가 저장된 주문 / 저장에 실패한 주문 - 화면을 다시 그려도 같은 모습이 되게 기억해 둔다
+const savingIds = new Set();
+const canceledIds = new Set();
+const failedIds = new Set();
+
+// 지금 화면에 보여 줄 status - 저장 중에는 누르기 전(paid) 그대로 보이고,
+// 취소가 저장된 뒤에는 canceled (서버 값이 아직 paid 일 때만)
+function shownStatus(r) {
+  if (savingIds.has(r.id)) return "paid";
+  if (canceledIds.has(r.id) && r.status === "paid") return "canceled";
+  return r.status;
+}
+
+// 상태 칸을 채운다 - 말, 단계 줄, (paid 일 때만) 「주문 취소」 단추
+function fillStatusCell(cell, r) {
+  const status = shownStatus(r);
+  // 표에 없는 값(영어 값 포함)은 「확인 중」으로 보여 준다
+  const known = Object.hasOwn(STATUS, status) ? STATUS[status] : null;
+  cell.replaceChildren();
+  const label = document.createElement("div");
+  label.className = "status-label";
+  label.textContent = known ? known.label : UNKNOWN_LABEL;
+  cell.append(label);
+  // 단계 줄은 1~4단계 주문에만 - 주문 취소와 확인 중에는 말만 보여 준다
+  if (known && known.step > 0) cell.append(stepsLine(known.step));
+
+  // paid 가 아닌 주문에는 단추를 붙이지 않는다
+  if (status !== "paid") return;
+  const saving = savingIds.has(r.id);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn ghost";
+  btn.style.cssText = "margin-top:10px;padding:8px 16px;font-size:13px";
+  btn.textContent = saving ? "저장 중" : "주문 취소";
+  btn.disabled = saving;
+  btn.addEventListener("click", () => cancelOrder(cell, r));
+  cell.append(btn);
+  if (failedIds.has(r.id) && !saving) {
+    const msg = document.createElement("p");
+    msg.className = "lead";
+    msg.style.cssText = "margin:8px 0 0;font-size:13px";
+    msg.textContent = "주문이 취소되지 않았어요. 이 주문은 지금 취소 전 상태 그대로예요. 주문 취소를 한 번 더 눌러 주세요.";
+    cell.append(msg);
+  }
+}
+
+// 그 주문 문서의 status 만 canceled 로 고친다 - 다른 필드는 건드리지 않는다
+async function cancelOrder(cell, r) {
+  if (savingIds.has(r.id)) return;
+  failedIds.delete(r.id);
+  savingIds.add(r.id);
+  fillStatusCell(cell, r);
+  try {
+    await updateDoc(doc(db, "orders", r.id), { status: "canceled" });
+    savingIds.delete(r.id);
+    canceledIds.add(r.id);
+  } catch (err) {
+    console.error(err);
+    // 누르기 전 모습으로 되돌리고 안내를 보여 준다
+    savingIds.delete(r.id);
+    failedIds.add(r.id);
+  }
+  fillStatusCell(cell, r);
+}
+
 function paint(snap) {
   // 최신순 정렬은 쿼리가 아니라 여기서 한다
   const rows = snap.docs
@@ -72,21 +138,15 @@ function paint(snap) {
   rows.forEach(r => {
     const tr = table.insertRow();
     const names = Array.isArray(r.items) ? r.items.map(i => i.name).join(", ") : "";
-    // 표에 없는 값(영어 값 포함)은 「확인 중」으로 보여 준다
-    const known = Object.hasOwn(STATUS, r.status) ? STATUS[r.status] : null;
     [
       orderedAt(r).toLocaleDateString("ko-KR"),
       names,
       Number(r.totalPrice).toLocaleString("ko-KR") + "원"
     ].forEach(t => { tr.insertCell().textContent = t; });
-    // 상태 칸 - 말을 적고, 1~4단계 주문에는 그 아래에 단계 줄을 넣는다 (주문 취소와 확인 중에는 말만)
+    // 상태 칸 - 말과 단계 줄(주문 취소와 확인 중에는 말만), paid 인 주문에는 「주문 취소」 단추
     const statusCell = tr.insertCell();
     statusCell.className = "status-cell";
-    const label = document.createElement("div");
-    label.className = "status-label";
-    label.textContent = known ? known.label : UNKNOWN_LABEL;
-    statusCell.append(label);
-    if (known && known.step > 0) statusCell.append(stepsLine(known.step));
+    fillStatusCell(statusCell, r);
   });
   box.replaceChildren(table);
 }
