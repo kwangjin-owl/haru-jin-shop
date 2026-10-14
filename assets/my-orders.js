@@ -77,16 +77,16 @@ function paint(snap) {
     [
       orderedAt(r).toLocaleDateString("ko-KR"),
       names,
-      Number(r.totalPrice).toLocaleString("ko-KR") + "원",
-      known ? known.label : UNKNOWN_LABEL
+      Number(r.totalPrice).toLocaleString("ko-KR") + "원"
     ].forEach(t => { tr.insertCell().textContent = t; });
-    // 단계 줄은 1~4단계 주문에만 - 주문 취소와 확인 중에는 말만 보여 준다
-    if (known && known.step > 0) {
-      const cell = table.insertRow().insertCell();
-      cell.colSpan = 4;
-      cell.className = "steps-cell";
-      cell.append(stepsLine(known.step));
-    }
+    // 상태 칸 - 말을 적고, 1~4단계 주문에는 그 아래에 단계 줄을 넣는다 (주문 취소와 확인 중에는 말만)
+    const statusCell = tr.insertCell();
+    statusCell.className = "status-cell";
+    const label = document.createElement("div");
+    label.className = "status-label";
+    label.textContent = known ? known.label : UNKNOWN_LABEL;
+    statusCell.append(label);
+    if (known && known.step > 0) statusCell.append(stepsLine(known.step));
   });
   box.replaceChildren(table);
 }
