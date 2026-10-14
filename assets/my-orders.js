@@ -91,6 +91,25 @@ function paint(snap) {
   box.replaceChildren(table);
 }
 
+// 화면 위쪽에 잠깐 띄우는 한 줄 - 조금 있다가 스스로 사라진다
+let toastTimer = null;
+function showToast(text) {
+  let el = document.querySelector("#order-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "order-toast";
+    el.setAttribute("role", "status");
+    el.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;" +
+      "background:#1d1b17;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;" +
+      "box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:calc(100% - 32px)";
+    document.body.append(el);
+  }
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 4000);
+}
+
 // 내 주문만 고르는 쿼리 - 듣기와 「다시 확인」이 같은 것을 쓴다
 const myOrdersQuery = (uid) => query(collection(db, "orders"), where("userId", "==", uid));
 
@@ -150,6 +169,10 @@ async function start() {
     (snap) => {
       console.log("[주문 알림] 주문 " + snap.size + "건, 바뀐 문서 " + snap.docChanges().length + "건");
       paint(snap);
+
+      // 내용이 바뀐 주문(modified)이 있을 때만 알린다
+      // 처음 받는 알림은 이미 있던 주문이 전부 added 로 오므로 여기에 걸리지 않는다
+      if (snap.docChanges().some(c => c.type === "modified")) showToast("주문 상태가 바뀌었습니다");
 
       if (isAllDone(snap)) {
         unsubscribe();
