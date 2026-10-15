@@ -129,6 +129,22 @@ function setupMore() {
 }
 
 /* --- 상품 상세 --- */
+// 상세 화면의 그림 글자 자리에 사진을 보여 준다 - 사진을 받지 못하면 그림 글자를 그대로 둔다
+async function paintDetailPhoto(p) {
+  try {
+    if (!photoUrls.has(p.imagePath)) photoUrls.set(p.imagePath, await getDownloadURL(ref(storage, p.imagePath)));
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+  const thumb = document.querySelector("#product-detail .thumb");
+  if (!thumb) return;
+  const img = document.createElement("img");
+  img.src = photoUrls.get(p.imagePath);
+  img.alt = p.name;
+  img.addEventListener("load", () => thumb.replaceChildren(img), { once: true });
+}
+
 async function loadDetail() {
   try {
     const snap = await getDoc(doc(db, "products", qs("id") || "-"));
@@ -136,6 +152,8 @@ async function loadDetail() {
     // 숨긴 상품(isVisible 이 true 가 아님)은 없는 것처럼 보여 준다
     const p = data && data.isVisible === true ? merge(snap.id, data) : null;
     paintDetail(p, snap.exists() ? 1 : 0);
+    // imagePath 가 있으면 그림 글자 자리에 사진을 보여 준다 (읽은 문서 수는 그대로 1장)
+    if (p && p.imagePath) paintDetailPhoto(p);
     // 보여 줄 상품이 있을 때만 「바로 주문」 단추를 보인다
     // 단추는 상품을 그린 뒤에야 생기므로, 클릭 처리도 여기서 한 번 붙인다
     if (p) { orderProductId = p.id; document.querySelector("#order-now").hidden = false; setupOrder(); }
