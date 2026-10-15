@@ -169,6 +169,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const next = new URLSearchParams(location.search).get("next");
       if (next && /^[\w-]+\.html$/.test(next)) setTimeout(() => { location.href = next; }, 1000);
     } catch (err) {
+      // 손님 화면에는 코드를 보이지 않고, 원인을 찾을 수 있게 콘솔에만 그대로 남긴다
+      console.error(err);
       show(errorText(err), "err");
     }
     lock(false);
