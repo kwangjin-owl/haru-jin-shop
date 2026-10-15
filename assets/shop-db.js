@@ -9,8 +9,10 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-aut
 import {
   getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, getDoc, doc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
 const db = getFirestore(app);
+const storage = getStorage(app);
 const auth = getAuth(app);
 
 // 오류 글을 줄이지 않고 그대로 보여 주기 위한 글
@@ -20,7 +22,7 @@ const errorText = (err) => (err && err.code ? err.code + " — " : "") + (err &&
 function merge(id, data) {
   const base = findProduct(id);
   if (!base) return null;
-  return { ...base, name: data.name, price: data.price, summary: data.summary, stock: data.stock };
+  return { ...base, name: data.name, price: data.price, summary: data.summary, stock: data.stock, imagePath: data.imagePath };
 }
 
 /* --- 상품 목록 --- */
@@ -68,9 +70,33 @@ function takePage(snap) {
   // 읽은 문서 수는 지금까지 실제로 받아 온 장수를 더한 값이다
   readTotal += snap.size;
   paintList(shown, readTotal);
+  paintPhotos();
   // 셋보다 적게 왔으면 더 가져올 것이 없다
   const more = document.querySelector("#load-more");
   if (more) more.hidden = snap.size < PAGE_SIZE;
+}
+
+// imagePath 가 있는 상품은 그 경로로 다운로드 URL 을 받아 그림 글자 자리에 사진을 보여 준다
+// 사진 주소를 받는 것은 문서를 읽는 것이 아니라서 읽은 문서 수에 더하지 않는다
+// 받은 주소는 기억해 두어 「더 보기」로 목록을 다시 그려도 다시 받지 않는다
+const photoUrls = new Map();
+async function paintPhotos() {
+  await Promise.all(shown.filter(p => p.imagePath).map(async (p) => {
+    try {
+      if (!photoUrls.has(p.imagePath)) photoUrls.set(p.imagePath, await getDownloadURL(ref(storage, p.imagePath)));
+    } catch (err) {
+      // 사진을 받지 못하면 그림 글자를 그대로 둔다
+      console.error(err);
+      return;
+    }
+    const thumb = document.querySelector('#product-list a.card[href="product.html?id=' + p.id + '"] .thumb');
+    if (!thumb) return;
+    const img = document.createElement("img");
+    img.src = photoUrls.get(p.imagePath);
+    img.alt = p.name;
+    // 사진을 그리지 못하면 그림 글자를 그대로 둔다
+    img.addEventListener("load", () => thumb.replaceChildren(img), { once: true });
+  }));
 }
 
 async function loadList() {
