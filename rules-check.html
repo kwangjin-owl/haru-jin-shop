@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>규칙 확인 · 진 빠지는 하루</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- 동의 기본값 — 태그 관리자보다 먼저 읽혀야 합니다 -->
+<script src="assets/consent.js"></script>
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KK3DL5B2');</script>
+<!-- End Google Tag Manager -->
+
+</head>
+<body>
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KK3DL5B2"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">진 빠지는 하루</a>
+  <nav class="site">
+    <a href="index.html">상품</a>
+    <a href="about.html">가게 소개</a>
+    <a href="shipping.html">배송·교환</a>
+    <a href="cart.html">장바구니<span class="cart-count">0</span></a>
+  </nav>
+</div></header>
+
+<main><div class="wrap">
+  <h2>규칙 확인</h2>
+  <p class="lead" data-only-logged-out hidden>로그인해야 쓸 수 있습니다.</p>
+  <div id="rules-box" data-only-logged-in hidden>
+    <p style="margin:0 0 4px;font-weight:600">이메일: <span data-auth-email></span></p>
+    <p style="margin:0 0 22px;font-weight:600;word-break:break-all">UID: <span id="rules-uid"></span></p>
+
+    <button class="btn" type="button" id="btn-read-orders">주문 전체 읽기</button>
+    <div class="rules-result" id="result-read-orders" role="status"></div>
+
+    <button class="btn" type="button" id="btn-fix-order" style="margin-top:22px">내 주문 금액 고치기</button>
+    <div class="rules-result" id="result-fix-order" role="status"></div>
+
+    <button class="btn" type="button" id="btn-zero-price" style="margin-top:22px">상품 가격 0원으로</button>
+    <div class="rules-result" id="result-zero-price" role="status"></div>
+  </div>
+</div></main>
+<footer class="site"><div class="wrap"></div></footer>
+<script src="assets/shop.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/consent-ui.js"></script>
+<script type="module" src="assets/auth.js"></script>
+<script type="module" src="assets/rules-check.js"></script>
+</body>
+</html>
