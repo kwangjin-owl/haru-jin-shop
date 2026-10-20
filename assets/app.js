@@ -310,9 +310,35 @@ function paintCheckout() {
       }
     });
 
-    Cart.clear();
-    location.href = "done.html";
+    // 결제창(테스트)을 연다 - 주문 문서는 만들지 않고, 장바구니도 비우지 않고, 완료 화면으로도 넘어가지 않는다
+    // 주문 이름 - 첫 상품 이름 뒤에 「외 N건」(N 은 나머지 상품 종류 수), 한 종류면 이름만
+    const orderName = purchaseItems.length === 0 ? "" :
+      purchaseItems[0].item_name + (purchaseItems.length > 1 ? " 외 " + (purchaseItems.length - 1) + "건" : "");
+    requestPortOnePayment(orderId, orderName, purchaseValue);
   });
+}
+
+// 포트원 결제창(테스트) - 돌려받은 결과는 성공이든 실패든 꾸미지 않고 그대로 결제 화면에 보여 준다
+async function requestPortOnePayment(paymentId, orderName, totalAmount) {
+  const out = document.querySelector("#pay-result");
+  const submit = document.querySelector("#pay-form button[type=submit]");
+  out.textContent = "paymentId: " + paymentId;
+  submit.disabled = true;
+  try {
+    const response = await PortOne.requestPayment({
+      storeId: "store-d323005c-3581-4987-b169-3287e8771a60",
+      channelKey: "channel-key-a86ca344-c79f-4543-a993-58ee9890cbeb",
+      paymentId: paymentId,
+      orderName: orderName,
+      totalAmount: totalAmount,
+      currency: "KRW",
+      payMethod: "CARD"
+    });
+    out.textContent = "paymentId: " + paymentId + "\n" + JSON.stringify(response, null, 2);
+  } catch (err) {
+    out.textContent = "paymentId: " + paymentId + "\n" + (err && err.stack ? err.stack : String(err));
+  }
+  submit.disabled = false;
 }
 
 /* --- 가게 소개·배송 안내 글 --- */
