@@ -37,8 +37,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div></header>
 
 <main><div class="wrap">
-  <h2>주문이 접수되었습니다</h2>
-  <div class="prose">
+  <h2 id="done-title" hidden>주문이 접수되었습니다</h2>
+  <div id="done-message" role="status" style="white-space:pre-wrap;word-break:break-all"></div>
+  <div class="prose" id="done-prose" hidden>
     <p>연습용 주문이라 실제로 배송되지는 않습니다.</p>
     <p>영업일 기준 이틀 안에 보내드리는 것이 원래 약속입니다.</p>
   </div>
@@ -49,5 +50,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/app.js"></script>
 <script src="assets/consent-ui.js"></script>
 <script type="module" src="assets/auth.js"></script>
+<script type="module" src="assets/order-done.js"></script>
 </body>
 </html>

@@ -270,60 +270,27 @@ function paintCheckout() {
   form.addEventListener("submit", e => {
     e.preventDefault();
 
-    // ▼ purchase — 결제 제출이 끝난 직후입니다. 아래 Cart.clear() 로 장바구니를 비우기 전이라
-    //    여기서는 아직 담긴 상품을 읽을 수 있습니다.
-    //    여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+    // 결제창(테스트)을 연다 - 결제 결과는 주문 완료 화면(done.html)이 한 곳에서 받는다
+    // (purchase 도 이 화면이 아니라 주문 완료 화면에서 보낸다)
     // 주문 번호 - 시각(밀리초)과 무작위 글자를 붙여 만든다
     const orderId = "HARU-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-    // 장바구니에 담긴 줄을 읽어 온다 - 비우기 전이라 아직 읽을 수 있다
-    const purchaseCartItems = Cart.read();
-    // 담긴 줄마다 상품 목록에서 이름과 가격을 찾아 상품 상자로 만든다
-    // 상품 목록에서 사라진 상품은 값을 읽을 수 없으니 뺀다
-    const purchaseItems = purchaseCartItems
-      .map(i => {
-        const p = findProduct(i.id);
-        if (!p) return null;
-        return { item_id: p.id, item_name: p.name, price: p.price, quantity: i.qty };
-      })
-      .filter(it => it !== null);
-    // 합계 - 가게가 이미 같은 셈을 하고 있어 그 값을 그대로 쓴다 (가격 × 수량의 합, 배송비는 없다)
-    const purchaseValue = Cart.total();
-    // 통로가 이미 있으면 그대로 쓰고, 없을 때만 새로 만든다
-    window.dataLayer = window.dataLayer || [];
-    // 앞에서 넣은 상품 값이 섞이지 않게 먼저 비운다
-    dataLayer.push({ ecommerce: null });
-    // 통로 끝에 한 덩어리를 넣는다 - 넣는 순간이 태그 관리자가 듣는 순간
-    dataLayer.push({
-      // 무슨 일이 일어났나 - 계획서 이름 글자 그대로
-      event: "purchase",
-      // 같이 보내는 상품 값 묶음
-      ecommerce: {
-        // 주문마다 겹치지 않는 주문 번호
-        transaction_id: orderId,
-        // 어느 나라 돈인가
-        currency: "KRW",
-        // 금액 - 주문한 상품 합계(배송비 뺀 값)
-        // 화면 합계와 다르다: 화면은 배송비를 더해 보여 주지만 value 에는 일부러 넣지 않는다
-        value: purchaseValue,
-        // 주문한 상품 상자 전체를 목록에 넣는다
-        items: purchaseItems
-      }
-    });
-
-    // 결제창(테스트)을 연다 - 주문 문서는 만들지 않고, 장바구니도 비우지 않고, 완료 화면으로도 넘어가지 않는다
+    // 장바구니에 담긴 줄 - 상품 목록에서 사라진 상품은 뺀다
+    const cartItems2 = Cart.read().filter(i => findProduct(i.id));
     // 주문 이름 - 첫 상품 이름 뒤에 「외 N건」(N 은 나머지 상품 종류 수), 한 종류면 이름만
-    const orderName = purchaseItems.length === 0 ? "" :
-      purchaseItems[0].item_name + (purchaseItems.length > 1 ? " 외 " + (purchaseItems.length - 1) + "건" : "");
-    requestPortOnePayment(orderId, orderName, purchaseValue);
+    const orderName = cartItems2.length === 0 ? "" :
+      findProduct(cartItems2[0].id).name + (cartItems2.length > 1 ? " 외 " + (cartItems2.length - 1) + "건" : "");
+    requestPortOnePayment(orderId, orderName, Cart.total());
   });
 }
 
-// 포트원 결제창(테스트) - 돌려받은 결과는 성공이든 실패든 꾸미지 않고 그대로 결제 화면에 보여 준다
+// 포트원 결제창(테스트) - 결제 결과는 주문 완료 화면 주소 뒤에 붙여 넘긴다 (휴대폰의 redirectUrl 과 같은 모양: paymentId · code · message)
 async function requestPortOnePayment(paymentId, orderName, totalAmount) {
   const out = document.querySelector("#pay-result");
   const submit = document.querySelector("#pay-form button[type=submit]");
   out.textContent = "paymentId: " + paymentId;
   submit.disabled = true;
+  // 주문 완료 화면의 주소 - 지금 열려 있는 배포 주소를 기준으로 http(s)로 시작한다
+  const doneUrl = new URL("done.html", location.href).href;
   try {
     const response = await PortOne.requestPayment({
       storeId: "store-d323005c-3581-4987-b169-3287e8771a60",
@@ -332,9 +299,19 @@ async function requestPortOnePayment(paymentId, orderName, totalAmount) {
       orderName: orderName,
       totalAmount: totalAmount,
       currency: "KRW",
-      payMethod: "CARD"
+      payMethod: "CARD",
+      // 장바구니의 상품 ID와 수량을 든 그대로 싣는다 - 금액은 싣지 않는다
+      customData: { items: Cart.read().map(i => ({ id: i.id, qty: i.qty })) },
+      // 휴대폰에서는 결제창이 이 주소로 돌아온다
+      redirectUrl: doneUrl
     });
-    out.textContent = "paymentId: " + paymentId + "\n" + JSON.stringify(response, null, 2);
+    // PC - 돌려받은 결과를 주문 완료 화면 주소 뒤에 붙여 넘긴다
+    const params = new URLSearchParams();
+    params.set("paymentId", response.paymentId || paymentId);
+    if (response.code !== undefined) params.set("code", response.code);
+    if (response.message !== undefined) params.set("message", response.message);
+    location.href = doneUrl + "?" + params.toString();
+    return;
   } catch (err) {
     out.textContent = "paymentId: " + paymentId + "\n" + (err && err.stack ? err.stack : String(err));
   }
