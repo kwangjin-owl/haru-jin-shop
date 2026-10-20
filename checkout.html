@@ -59,6 +59,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/consent-ui.js"></script>
+<!-- 포트원 V2 브라우저 SDK - 불러오기만 하고 결제창은 아직 열지 않는다 -->
+<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+<script>
+  // 불러왔으면 window.PortOne 이 생긴다
+  console.log(window.PortOne ? "포트원 SDK 준비됨" : "포트원 SDK 없음");
+</script>
 <script type="module" src="assets/auth.js"></script>
 </body>
 </html>
