@@ -6,10 +6,12 @@
    =========================================================== */
 import { app } from "./auth.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getFirestore, collection, query, where, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+const calcOrderTotal = httpsCallable(getFunctions(app, "us-central1"), "calcOrderTotal");
 
 // 오류 글을 줄이지 않고 그대로 보여 주기 위한 글
 const errorText = (err) => (err && err.code ? err.code + " — " : "") + (err && err.message ? err.message : String(err));
@@ -71,4 +73,16 @@ setup("#btn-fix-order", "#result-fix-order", async (user, out) => {
 setup("#btn-zero-price", "#result-zero-price", async (user, out) => {
   await updateDoc(doc(db, "products", "p1"), { price: 0 });
   line(out, "바꿨습니다: products/p1 의 price 를 0 으로");
+});
+
+// 서버에게 금액 묻기 - calcOrderTotal 에 productId "p1", quantity 2 만 보낸다
+setup("#btn-ask-total", "#result-ask-total", async (user, out) => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 2 });
+  line(out, "totalPrice: " + res.data.totalPrice);
+});
+
+// 가격 바꿔 보내기 - 같은 요청에 price: 100 을 덧붙여 보낸다 (서버가 무시하는지 보려는 것)
+setup("#btn-send-price", "#result-send-price", async (user, out) => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 2, price: 100 });
+  line(out, "totalPrice: " + res.data.totalPrice);
 });
