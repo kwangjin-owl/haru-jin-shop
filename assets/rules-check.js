@@ -86,3 +86,9 @@ setup("#btn-send-price", "#result-send-price", async (user, out) => {
   const res = await calcOrderTotal({ productId: "p1", quantity: 2, price: 100 });
   line(out, "totalPrice: " + res.data.totalPrice);
 });
+
+// 수량 0으로 묻기 - calcOrderTotal 에 productId "p1", quantity 0 을 보낸다
+setup("#btn-zero-qty", "#result-zero-qty", async (user, out) => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 0 });
+  line(out, "totalPrice: " + res.data.totalPrice);
+});
