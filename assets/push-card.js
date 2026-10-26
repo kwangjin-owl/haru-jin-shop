@@ -4,6 +4,10 @@
    - 브라우저 알림 허락 창은 「알림 받기」 단추를 누른 처리 안에서만 띄운다
    - 알림 받을 주소(토큰)는 아직 받지 않는다
    =========================================================== */
+import { app } from "./auth.js";
+import { syncPushToken } from "./push-token.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
 const CARD_ID = "push-card";
 
 export function hidePushCard() {
@@ -47,7 +51,11 @@ export function showPushCard(anchor) {
       // 허락 창은 이 단추를 누른 처리 안에서만 띄운다
       const result = await Notification.requestPermission();
       console.log("알림 허락 결과: " + result);
-      if (result === "granted") note("알림을 받고 있어요");
+      if (result === "granted") {
+        note("알림을 받고 있어요");
+        // 허락된 바로 이 자리에서 알림 주소를 받아 적는다
+        syncPushToken(getAuth(app).currentUser, true);
+      }
       else if (result === "denied") note("브라우저 주소창 왼쪽 아이콘 → 알림에서 켤 수 있어요");
     });
 

@@ -6,6 +6,7 @@
    =========================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, sendEmailVerification, GoogleAuthProvider, linkWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { syncPushToken } from "./push-token.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
@@ -147,6 +148,8 @@ onAuthStateChanged(auth, (user) => {
   // 로그인한 이메일을 적어 두는 자리
   document.querySelectorAll("[data-auth-email]").forEach(el => { el.textContent = user ? user.email : ""; });
   guard(user);
+  // 알림을 허락한 로그인 손님은 화면을 열 때마다 알림 주소를 확인한다
+  syncPushToken(user, false);
 });
 
 // 화면 안의 로그아웃 단추(data-logout)도 같은 로그아웃을 쓴다
