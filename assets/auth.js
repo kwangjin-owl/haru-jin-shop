@@ -18,6 +18,12 @@ const firebaseConfig = {
 
 // 다른 파일(shop-db.js)도 같은 앱을 쓰도록 내보낸다
 export const app = initializeApp(firebaseConfig);
+
+// 웹 푸시 알림을 받을 서비스 워커를 브라우저에 등록만 한다 (허락 요청 · 토큰 받기는 아직 안 함)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => { /* 실패해도 화면은 그대로 */ });
+}
+
 const auth = getAuth(app);
 // 인증 메일을 한국어로 보낸다
 auth.languageCode = "ko";
