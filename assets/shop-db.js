@@ -5,6 +5,7 @@
    - Firebase 앱은 auth.js 가 만든 것을 그대로 씁니다 (설정과 버전 같음)
    =========================================================== */
 import { app } from "./auth.js";
+import { showPushCard, hidePushCard } from "./push-card.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, getDoc, doc, runTransaction, serverTimestamp
@@ -174,6 +175,7 @@ function setupOrder() {
   if (!btn) return;
   btn.addEventListener("click", async () => {
     msg.textContent = "";
+    hidePushCard();
     // 로그인 확인이 끝날 때까지 기다린 뒤 지금 로그인한 사람을 본다
     await auth.authStateReady();
     const user = auth.currentUser;
@@ -204,6 +206,8 @@ function setupOrder() {
         t.update(productRef, { stock: d.stock - 1 });
       });
       msg.textContent = "주문했습니다: " + ordered + " 1개";
+      // 「주문했습니다」 바로 아래에 알림 카드
+      showPushCard(msg);
     } catch (err) {
       msg.textContent = err instanceof OutOfStock ? "재고가 없습니다" : errorText(err);
     }

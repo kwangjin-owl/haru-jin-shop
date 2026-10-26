@@ -7,6 +7,7 @@
    - Firebase 앱은 auth.js 가 만든 것을 그대로 쓴다 (설정과 버전 같음)
    =========================================================== */
 import { app } from "./auth.js";
+import { showPushCard } from "./push-card.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
@@ -79,6 +80,8 @@ async function run() {
   title.hidden = false;
   prose.hidden = false;
   line("결제 ID: " + paymentId);
+  // 주문을 마친 손님에게만 알림을 받을지 묻는다
+  showPushCard(message);
 
   // ▼ purchase — 결제가 끝나 주문이 접수된 직후, 이 화면에서 한 번만 보낸다
   window.dataLayer = window.dataLayer || [];
