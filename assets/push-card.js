@@ -18,11 +18,13 @@ export function showPushCard(anchor) {
 
   const box = document.createElement("div");
   box.id = CARD_ID;
-  box.style.margin = "14px 0";
+  // 위 내용과 구분되도록 테두리 있는 카드로 보인다
+  box.style.cssText = "margin:24px 0;padding:18px 20px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;max-width:420px";
 
   const note = (text) => {
     const p = document.createElement("p");
     p.className = "lead";
+    p.style.margin = "0";
     p.textContent = text;
     box.replaceChildren(p);
   };
@@ -34,7 +36,7 @@ export function showPushCard(anchor) {
   } else {
     const title = document.createElement("p");
     title.className = "lead";
-    title.style.fontWeight = "700";
+    title.style.cssText = "margin:0 0 14px;font-weight:700;color:var(--ink)";
     title.textContent = "배송이 시작되면 바로 알려 드릴까요?";
 
     const accept = document.createElement("button");
