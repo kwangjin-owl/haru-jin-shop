@@ -3,3 +3,11 @@
 node_modules/
 
 *-debug.log
+
+*.local
+
+.secret.local
+
+firebase/public/
+
+.firebase/
