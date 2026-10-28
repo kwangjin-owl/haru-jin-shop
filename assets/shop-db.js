@@ -21,8 +21,8 @@ const errorText = (err) => (err && err.code ? err.code + " — " : "") + (err &&
 
 // Firestore 문서(id, 필드)에 shop.js 의 그림·긴 설명을 붙여 한 상품으로 만든다
 function merge(id, data) {
-  const base = findProduct(id);
-  if (!base) return null;
+  // shop.js 에 없는 상품(관리 화면에서 새로 만든 것)은 기본 그림을 쓰고, 긴 설명 자리에는 한 줄 소개를 쓴다
+  const base = findProduct(id) || { id, emoji: "🛍️", detail: data.summary ? [data.summary] : [] };
   return { ...base, name: data.name, price: data.price, summary: data.summary, stock: data.stock, imagePath: data.imagePath };
 }
 
