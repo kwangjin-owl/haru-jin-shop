@@ -43,6 +43,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .filter-buttons .btn{padding:8px 16px;font-size:14px}
   .filter-bar input,.filter-bar select{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;color:var(--ink)}
   .filter-bar input{flex:1;min-width:160px;max-width:260px}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  #undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:20;display:flex;gap:12px;align-items:center;
+    background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
+  #undo-bar[hidden]{display:none}
+  #undo-bar .btn{padding:6px 14px;font-size:13.5px;background:#fff;color:var(--ink)}
+  #undo-bar .undo-err{color:#ffb4ab;font-size:13px;white-space:pre-wrap;word-break:break-all}
+  dialog#takedown-dialog{border:1px solid var(--line);border-radius:12px;padding:22px;max-width:380px;background:var(--card);color:var(--ink)}
+  dialog#takedown-dialog::backdrop{background:rgba(0,0,0,.35)}
+  dialog#takedown-dialog p{margin:0 0 18px}
+  dialog#takedown-dialog .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
+  #activity-list{list-style:none;margin:0;padding:0}
+  #activity-list li{display:grid;grid-template-columns:170px 1fr 80px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  #activity-list li:last-child{border-bottom:0}
+  @media (max-width:640px){#activity-list li{grid-template-columns:1fr 1fr}}
   #new-form{margin:0 0 20px}
   #new-form input[type=file]{padding:9px 0;border:0}
 </style>
@@ -108,6 +122,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <button class="btn" type="button" data-filter="all" aria-pressed="true">전체</button>
           <button class="btn ghost" type="button" data-filter="soldout" aria-pressed="false">품절만</button>
           <button class="btn ghost" type="button" data-filter="hidden" aria-pressed="false">숨김만</button>
+          <button class="btn ghost" type="button" data-filter="deleted" aria-pressed="false">내린 상품</button>
         </div>
         <input id="products-search" type="search" placeholder="이름 검색" aria-label="이름 검색">
         <select id="products-sort" aria-label="정렬">
@@ -126,16 +141,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <tbody></tbody>
         </table>
       </div>
+      <!-- 최근 활동 - 함수가 남기는 adminLogs 를 읽기만 한다 -->
+      <div style="margin-top:36px;padding-top:24px;border-top:1px solid var(--line)">
+        <h3 style="margin:0 0 10px">최근 활동</h3>
+        <p style="margin:0 0 10px"><button class="btn ghost" type="button" id="btn-activity" style="padding:7px 14px;font-size:13.5px">새로 읽기</button></p>
+        <p class="lead" id="activity-status" role="status" style="margin:0 0 10px"></p>
+        <ul id="activity-list"></ul>
+      </div>
     </section>
   </div>
 </div></main>
+<dialog id="takedown-dialog">
+  <p id="takedown-text"></p>
+  <div class="dlg-actions">
+    <button class="btn ghost" type="button" id="takedown-cancel">그만두기</button>
+    <button class="btn" type="button" id="takedown-ok">내리기</button>
+  </div>
+</dialog>
+<div id="undo-bar" role="status" hidden>
+  <span id="undo-text"></span>
+  <button class="btn" type="button" id="undo-btn">되돌리기</button>
+  <span class="undo-err" id="undo-err"></span>
+</div>
 <footer class="site"><div class="wrap"></div></footer>
 <script src="assets/consent-ui.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
-  import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, deleteField, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
   const firebaseConfig = {
@@ -174,7 +208,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // 표는 role 이 staff · admin 일 때만 보인다
     $("admin-products").hidden = !ok;
     // 처음 한 번만 읽는다 - 「다시 확인」을 눌러도 다시 읽지 않는다
-    if (ok && !allProducts) await loadProducts();
+    if (ok && !allProducts) { await loadProducts(); loadActivity(); }
   }
 
   /* --- 상품 표 --- */
@@ -207,6 +241,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let rows = allProducts.filter(({ data }) => {
       if (view.filter === "soldout" && data.stock !== 0) return false;
       if (view.filter === "hidden" && data.isVisible !== false) return false;
+      if (view.filter === "deleted" && !data.deletedAt) return false;
       if (q && !String(data.name || "").toLowerCase().includes(q)) return false;
       return true;
     });
@@ -241,6 +276,90 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }));
   $("products-search").addEventListener("input", (ev) => { view.search = ev.target.value; renderProducts(); });
   $("products-sort").addEventListener("change", (ev) => { view.sort = ev.target.value; renderProducts(); });
+
+  /* --- 내리기 · 되돌리기 (문서는 지우지 않는다) --- */
+  const dlg = $("takedown-dialog");
+  let pending = null;
+  let undoTarget = null;
+
+  function askTakedown(id, data, showErr) {
+    pending = { id, data, showErr };
+    $("takedown-text").textContent = "『" + data.name + "』을 가게에서 내립니다";
+    dlg.showModal();
+  }
+  $("takedown-cancel").addEventListener("click", () => { pending = null; dlg.close(); });
+  $("takedown-ok").addEventListener("click", async () => {
+    const t = pending;
+    pending = null;
+    dlg.close();
+    if (!t) return;
+    t.showErr(null);
+    try {
+      // deletedAt 은 서버 시각, isVisible 은 false
+      await updateDoc(doc(db, "products", t.id), { deletedAt: serverTimestamp(), isVisible: false, updatedAt: serverTimestamp() });
+      t.data.deletedAt = new Date();
+      t.data.isVisible = false;
+      t.data.updatedAt = new Date();
+      undoTarget = t;
+      $("undo-text").textContent = "『" + t.data.name + "』을 내렸습니다";
+      $("undo-err").textContent = "";
+      $("undo-bar").hidden = false;
+      renderProducts();
+    } catch (e) {
+      t.showErr(e);
+    }
+  });
+
+  // deletedAt 필드를 아예 지우고 isVisible 을 true 로 저장한다
+  async function restoreProduct(id, data, showErr) {
+    showErr(null);
+    try {
+      await updateDoc(doc(db, "products", id), { deletedAt: deleteField(), isVisible: true, updatedAt: serverTimestamp() });
+      delete data.deletedAt;
+      data.isVisible = true;
+      data.updatedAt = new Date();
+      renderProducts();
+      return true;
+    } catch (e) {
+      showErr(e);
+      return false;
+    }
+  }
+  $("undo-btn").addEventListener("click", async () => {
+    if (!undoTarget) return;
+    const t = undoTarget;
+    $("undo-err").textContent = "";
+    const ok = await restoreProduct(t.id, t.data, (e) => { $("undo-err").textContent = e ? errText(e) : ""; });
+    if (ok) { undoTarget = null; $("undo-bar").hidden = true; }
+  });
+
+  /* --- 최근 활동: adminLogs 를 at 이 최신인 것부터 열 줄 - 읽기만 한다 --- */
+  async function loadActivity() {
+    const status = $("activity-status");
+    status.textContent = "불러오는 중입니다…";
+    try {
+      const snap = await getDocs(query(collection(db, "adminLogs"), orderBy("at", "desc"), limit(10)));
+      const list = $("activity-list");
+      list.replaceChildren();
+      snap.docs.forEach(d => {
+        const log = d.data();
+        const found = allProducts && allProducts.find(r => r.id === log.productId);
+        const li = el("li");
+        const when = log.at && typeof log.at.toDate === "function" ? seoulTime(log.at.toDate()) : "-";
+        li.append(
+          el("span", when),
+          el("span", found ? found.data.name : String(log.productId)),
+          el("span", String(log.action)),
+          el("span", Array.isArray(log.changedKeys) ? log.changedKeys.join(", ") : "")
+        );
+        list.append(li);
+      });
+      status.textContent = snap.size === 0 ? "아직 활동이 없습니다" : "";
+    } catch (err) {
+      status.textContent = errText(err);
+    }
+  }
+  $("btn-activity").addEventListener("click", loadActivity);
 
   // 사진을 올리기 전에 고른 파일을 살핀다 - 문제가 있으면 그 글을, 없으면 null
   function photoProblem(file) {
@@ -301,7 +420,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     cell(soldOut, "mid");
     cell(visible, "mid");
     const editBtn = el("button", "고치기", { type: "button", className: "btn ghost" });
-    const last = cell(editBtn);
+    const actionsBox = el("div", undefined, { className: "row-actions" });
+    actionsBox.append(editBtn);
+    // 내리기는 아직 내리지 않은 상품에, 되돌리기는 「내린 상품」 필터에서 내린 상품에 보인다
+    if (!data.deletedAt) {
+      const takedownBtn = el("button", "내리기", { type: "button", className: "btn ghost" });
+      takedownBtn.addEventListener("click", () => askTakedown(id, data, showErr));
+      actionsBox.append(takedownBtn);
+    } else if (view.filter === "deleted") {
+      const restoreBtn = el("button", "되돌리기", { type: "button", className: "btn ghost" });
+      restoreBtn.addEventListener("click", () => restoreProduct(id, data, showErr));
+      actionsBox.append(restoreBtn);
+    }
+    const last = cell(actionsBox);
     last.append(err);
 
     // 품절 토글: 켜면 stock 0, 끄면 재고 숫자(1 이상 정수)를 물어 저장
