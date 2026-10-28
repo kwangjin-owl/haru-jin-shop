@@ -18,6 +18,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-KK3DL5B2');</script>
 <!-- End Google Tag Manager -->
 
+<style>
+  /* 관리 화면 안에서만 쓰는 모양 - 가게 스타일(style.css)은 건드리지 않는다 */
+  #admin-products [hidden]{display:none !important}
+  #admin-info p{margin:0 0 6px}
+  #admin-info{margin:0 0 18px}
+  #products-table{table-layout:auto}
+  #products-table th,#products-table td{padding:10px 12px;vertical-align:middle}
+  #products-table th.num,#products-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  #products-table th.mid,#products-table td.mid{text-align:center}
+  #products-table input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer}
+  #products-table .btn{padding:7px 14px;font-size:13.5px}
+  #products-table code{font-size:13px}
+  #products-table .thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+  #products-table .thumb-empty{width:48px;height:48px;border-radius:6px;border:1px dashed var(--line);box-sizing:border-box}
+  #products-table tr.edit td{background:#f3efe7}
+  .edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 16px;align-items:end}
+  .edit-grid label{display:block;font-size:13px;color:var(--sub)}
+  .edit-grid input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit}
+  .edit-actions{display:flex;gap:8px;margin-top:12px}
+  .row-msg{display:block;margin-top:6px;color:#b3261e;font-size:13px;white-space:pre-wrap;word-break:break-all}
+  #new-form{margin:0 0 20px}
+  #new-form input[type=file]{padding:9px 0;border:0}
+</style>
 </head>
 <body>
 
@@ -39,20 +62,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <!-- 로그인했을 때 - 로그인 토큰의 커스텀 클레임 role 로만 판단한다 -->
   <div id="admin-logged-in" hidden>
-    <p class="lead" id="admin-ok" hidden></p>
-    <p class="lead" style="margin:0 0 4px">로그인 : <strong id="admin-email"></strong></p>
-    <p class="lead" style="margin:0 0 14px">토큰을 받은 시각 : <strong id="admin-issued"></strong></p>
+    <div id="admin-info">
+      <p class="lead" id="admin-ok" hidden></p>
+      <p class="lead">로그인 : <strong id="admin-email"></strong></p>
+      <p class="lead">토큰을 받은 시각 : <strong id="admin-issued"></strong></p>
+    </div>
     <div id="admin-denied" hidden>
       <p class="lead">권한이 없습니다</p>
       <button class="btn" type="button" id="btn-grant">주인 명찰 받기</button>
     </div>
     <p class="auth-status err" id="admin-error" role="alert" hidden style="white-space:pre-wrap;word-break:break-all"></p>
-    <p style="margin-top:22px"><button class="btn ghost" type="button" id="btn-recheck">다시 확인</button></p>
+    <p style="margin:0"><button class="btn ghost" type="button" id="btn-recheck">다시 확인</button></p>
 
     <!-- 상품 표 - 입구가 「관리자: staff」 또는 「관리자: admin」 일 때만 보인다 -->
-    <section id="admin-products" hidden style="margin-top:32px">
+    <section id="admin-products" hidden style="margin-top:36px;padding-top:24px;border-top:1px solid var(--line)">
       <h3>상품</h3>
-      <p><button class="btn" type="button" id="btn-new">새 상품</button></p>
+      <p style="margin:0 0 16px"><button class="btn" type="button" id="btn-new">새 상품</button></p>
       <form id="new-form" class="pay" hidden>
         <label for="new-name">name</label>
         <input id="new-name" required>
@@ -62,17 +87,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <input id="new-summary">
         <label for="new-stock">stock</label>
         <input id="new-stock" type="number" step="1" required>
+        <label for="new-photo">사진</label>
+        <input id="new-photo" type="file" accept="image/*">
+        <p class="lead" id="new-progress" role="status" style="margin:6px 0 0"></p>
         <div class="auth-actions">
           <button class="btn" type="submit">저장</button>
           <button class="btn ghost" type="button" id="new-cancel">취소</button>
         </div>
         <p class="auth-status err" id="new-error" role="alert" hidden style="white-space:pre-wrap;word-break:break-all"></p>
       </form>
-      <p class="lead" id="products-status" role="status"></p>
+      <p class="lead" id="products-status" role="status" style="margin:0 0 10px"></p>
       <div style="overflow-x:auto">
-        <table id="products-table" style="border-collapse:collapse;width:100%">
+        <table class="cart" id="products-table">
           <thead><tr>
-            <th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th>
+            <th>문서 ID</th><th>사진</th><th>name</th><th class="num">price</th><th class="num">stock</th><th class="mid">품절</th><th class="mid">노출</th><th></th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -87,6 +115,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
   import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
@@ -128,6 +157,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   /* --- 상품 표 --- */
   const db = getFirestore(app);
+  const storage = getStorage(app);
   const errText = (err) => (err && err.code ? err.code + " — " : "") + (err && err.message ? err.message : String(err));
 
   // 조건 없이 전부 읽는다 (isVisible 이 false 인 것도 포함)
@@ -145,6 +175,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
   }
 
+  // 사진을 올리기 전에 고른 파일을 살핀다 - 문제가 있으면 그 글을, 없으면 null
+  function photoProblem(file) {
+    if (!file) return null;
+    if (file.size >= 5 * 1024 * 1024) return "5MB 넘는 사진은 올릴 수 없습니다";
+    if (!file.type.startsWith("image/")) return "이미지 파일만 올릴 수 있습니다";
+    return null;
+  }
+
+  // 고른 파일 그대로 products/문서 ID/main.jpg 에 올린다 (맨 앞에 / 없음). 다 올라가면 경로 글자를 돌려준다
+  function uploadPhoto(id, file, onProgress) {
+    const path = "products/" + id + "/main.jpg";
+    return new Promise((resolve, reject) => {
+      const task = uploadBytesResumable(ref(storage, path), file);
+      onProgress(0);
+      task.on("state_changed",
+        (s) => onProgress(Math.round(s.bytesTransferred / s.totalBytes * 100)),
+        reject,
+        () => resolve(path));
+    });
+  }
+
   function el(tag, text, attrs) {
     const e = document.createElement(tag);
     if (text !== undefined) e.textContent = text;
@@ -155,10 +206,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // 한 상품은 줄 두 개: 보이는 줄 + (고치기를 누르면 열리는) 고치는 칸 줄
   function productRows(id, data) {
     const tr = el("tr");
-    const cell = (node) => { const td = el("td"); td.style.padding = "6px 8px"; td.append(node); tr.append(td); return td; };
+    const cell = (node, cls) => { const td = el("td"); if (cls) td.className = cls; td.append(node); tr.append(td); return td; };
     const err = el("span");
     err.setAttribute("role", "alert");
-    err.style.cssText = "color:#b3261e;white-space:pre-wrap;word-break:break-all;display:block";
+    err.className = "row-msg";
     const showErr = (e) => { err.textContent = e ? errText(e) : ""; };
 
     const soldOut = el("input", undefined, { type: "checkbox", checked: data.stock === 0 });
@@ -166,11 +217,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const stockCell = el("span", String(data.stock));
 
     cell(el("code", id));
+    const thumb = el("img", undefined, { alt: "", className: "thumb" });
+    thumb.hidden = true;
+    const empty = el("div", undefined, { className: "thumb-empty" });
+    const thumbCell = cell(empty);
+    thumbCell.append(thumb);
+    // 표에 보이려고 내려받는 주소를 그때그때 읽을 뿐, 문서에는 저장하지 않는다
+    if (data.imagePath) {
+      getDownloadURL(ref(storage, data.imagePath))
+        .then(url => { thumb.src = url; thumb.hidden = false; empty.hidden = true; })
+        .catch(e => showErr(e));
+    }
     cell(el("span", data.name));
-    cell(el("span", String(data.price)));
-    cell(stockCell);
-    cell(soldOut);
-    cell(visible);
+    cell(el("span", String(data.price)), "num");
+    cell(stockCell, "num");
+    cell(soldOut, "mid");
+    cell(visible, "mid");
     const editBtn = el("button", "고치기", { type: "button", className: "btn ghost" });
     const last = cell(editBtn);
     last.append(err);
@@ -218,35 +280,52 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
 
     // 고치기: price · summary · stock
-    const editTr = el("tr");
+    const editTr = el("tr", undefined, { className: "edit" });
     editTr.hidden = true;
-    const editTd = el("td", undefined, { colSpan: 7 });
-    editTd.style.padding = "6px 8px";
+    const editTd = el("td", undefined, { colSpan: 8 });
+    const grid = el("div", undefined, { className: "edit-grid" });
+    const actions = el("div", undefined, { className: "edit-actions" });
     const fPrice = el("input", undefined, { type: "number", step: "any", value: data.price });
     const fSummary = el("input", undefined, { type: "text", value: data.summary || "" });
     const fStock = el("input", undefined, { type: "number", step: "1", value: data.stock });
+    const fPhoto = el("input", undefined, { type: "file", accept: "image/*" });
+    const editProgress = el("span");
+    editProgress.setAttribute("role", "status");
+    editProgress.className = "row-msg";
+    editProgress.style.color = "var(--sub)";
     const save = el("button", "저장", { type: "button", className: "btn" });
     const cancel = el("button", "취소", { type: "button", className: "btn ghost" });
     const editErr = el("span");
     editErr.setAttribute("role", "alert");
-    editErr.style.cssText = "color:#b3261e;white-space:pre-wrap;word-break:break-all;display:block";
-    const lab = (t, input) => { const l = el("label", t + " "); l.style.marginRight = "10px"; l.append(input); return l; };
-    editTd.append(lab("price", fPrice), lab("summary", fSummary), lab("stock", fStock), save, cancel, editErr);
+    editErr.className = "row-msg";
+    const lab = (t, input) => { const l = el("label", t); l.append(input); return l; };
+    grid.append(lab("price", fPrice), lab("summary", fSummary), lab("stock", fStock), lab("사진", fPhoto));
+    actions.append(save, cancel);
+    editTd.append(grid, actions, editProgress, editErr);
     editTr.append(editTd);
 
     editBtn.addEventListener("click", () => { editTr.hidden = !editTr.hidden; });
     cancel.addEventListener("click", () => { editTr.hidden = true; });
     save.addEventListener("click", async () => {
       editErr.textContent = "";
+      editProgress.textContent = "";
       showErr(null);
       const price = Number(fPrice.value);
       const stock = Number(fStock.value);
       if (fPrice.value.trim() === "" || !(price > 0)) { editErr.textContent = "price 는 0보다 큰 숫자여야 합니다"; return; }
       if (fStock.value.trim() === "" || !Number.isInteger(stock) || stock < 0) { editErr.textContent = "stock 은 0 이상의 정수여야 합니다"; return; }
+      const photo = fPhoto.files[0];
+      const problem = photoProblem(photo);
+      if (problem) { editErr.textContent = problem; return; }
       save.disabled = true;
       try {
         // 숫자는 숫자로 저장한다 (글자로 저장하지 않는다)
         await updateDoc(doc(db, "products", id), { price: price, summary: fSummary.value, stock: stock });
+        if (photo) {
+          // 같은 경로에 덮어 올리고, 다 올라간 뒤에만 imagePath 를 저장한다
+          const path = await uploadPhoto(id, photo, (n) => { editProgress.textContent = "올리는 중 " + n + " %"; });
+          await updateDoc(doc(db, "products", id), { imagePath: path });
+        }
         await loadProducts();
       } catch (e) {
         editErr.textContent = errText(e);
@@ -271,8 +350,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     if (!$("new-name").value.trim()) return fail("name 을 넣어 주세요");
     if ($("new-price").value.trim() === "" || !(price > 0)) return fail("price 는 0보다 큰 숫자여야 합니다");
     if ($("new-stock").value.trim() === "" || !Number.isInteger(stock) || stock < 0) return fail("stock 은 0 이상의 정수여야 합니다");
+    const photo = $("new-photo").files[0];
+    const problem = photoProblem(photo);
+    if (problem) return fail(problem);
+    $("new-progress").textContent = "";
     try {
-      await addDoc(collection(db, "products"), {
+      // 1) 문서를 먼저 만든다 (isVisible false)
+      const created = await addDoc(collection(db, "products"), {
         name: $("new-name").value.trim(),
         price: price,
         summary: $("new-summary").value,
@@ -280,6 +364,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         isVisible: false,
         createdAt: serverTimestamp()
       });
+      // 2) 그 문서 ID 로 사진을 올리고 3) 다 올라간 뒤에 imagePath 를 저장한다
+      if (photo) {
+        try {
+          const path = await uploadPhoto(created.id, photo, (n) => { $("new-progress").textContent = "올리는 중 " + n + " %"; });
+          await updateDoc(created, { imagePath: path });
+        } catch (e) {
+          // 사진이 실패하면 imagePath 는 적지 않는다 - 문서는 만들어진 채로 둔다
+          $("new-form").reset();
+          await loadProducts();
+          return fail(errText(e));
+        }
+      }
       $("new-form").reset();
       $("new-form").hidden = true;
       await loadProducts();
