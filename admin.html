@@ -40,6 +40,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- 로그인했을 때 - 로그인 토큰의 커스텀 클레임 role 로만 판단한다 -->
   <div id="admin-logged-in" hidden>
     <p class="lead" id="admin-ok" hidden></p>
+    <p class="lead" style="margin:0 0 4px">로그인 : <strong id="admin-email"></strong></p>
+    <p class="lead" style="margin:0 0 14px">토큰을 받은 시각 : <strong id="admin-issued"></strong></p>
     <div id="admin-denied" hidden>
       <p class="lead">권한이 없습니다</p>
       <button class="btn" type="button" id="btn-grant">주인 명찰 받기</button>
@@ -86,6 +88,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     $("admin-ok").textContent = "관리자: " + role;
     $("admin-ok").hidden = !ok;
     $("admin-denied").hidden = ok;
+    $("admin-email").textContent = user.email;
+    $("admin-issued").textContent = seoulTime(result.issuedAtTime);
+  }
+
+  // issuedAtTime 은 UTC 글자(예: "Wed, 28 Oct 2026 03:04:05 GMT")라서 서울 시각으로 바꿔 적는다
+  function seoulTime(text) {
+    return new Date(text).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
   }
 
   onAuthStateChanged(auth, async (user) => {
