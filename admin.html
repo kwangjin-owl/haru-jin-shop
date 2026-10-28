@@ -38,6 +38,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .edit-grid input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit}
   .edit-actions{display:flex;gap:8px;margin-top:12px}
   .row-msg{display:block;margin-top:6px;color:#b3261e;font-size:13px;white-space:pre-wrap;word-break:break-all}
+  .filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}
+  .filter-buttons{display:flex;gap:8px}
+  .filter-buttons .btn{padding:8px 16px;font-size:14px}
+  .filter-bar input,.filter-bar select{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;color:var(--ink)}
+  .filter-bar input{flex:1;min-width:160px;max-width:260px}
   #new-form{margin:0 0 20px}
   #new-form input[type=file]{padding:9px 0;border:0}
 </style>
@@ -97,6 +102,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <p class="auth-status err" id="new-error" role="alert" hidden style="white-space:pre-wrap;word-break:break-all"></p>
       </form>
       <p class="lead" id="products-status" role="status" style="margin:0 0 10px"></p>
+      <!-- 필터 · 검색 · 정렬 - 한 번 읽어 둔 것에서 이 화면이 고른다 (Firestore 에 다시 묻지 않는다) -->
+      <div class="filter-bar">
+        <div class="filter-buttons" role="group" aria-label="필터">
+          <button class="btn" type="button" data-filter="all" aria-pressed="true">전체</button>
+          <button class="btn ghost" type="button" data-filter="soldout" aria-pressed="false">품절만</button>
+          <button class="btn ghost" type="button" data-filter="hidden" aria-pressed="false">숨김만</button>
+        </div>
+        <input id="products-search" type="search" placeholder="이름 검색" aria-label="이름 검색">
+        <select id="products-sort" aria-label="정렬">
+          <option value="">읽어 온 순서</option>
+          <option value="stock">재고 적은 순</option>
+          <option value="name">이름순</option>
+        </select>
+      </div>
+      <p class="lead" id="products-count" role="status" style="margin:0 0 10px"></p>
       <div style="overflow-x:auto">
         <table class="cart" id="products-table">
           <thead><tr>
@@ -152,7 +172,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     $("admin-issued").textContent = seoulTime(result.issuedAtTime);
     // 표는 role 이 staff · admin 일 때만 보인다
     $("admin-products").hidden = !ok;
-    if (ok) await loadProducts();
+    // 처음 한 번만 읽는다 - 「다시 확인」을 눌러도 다시 읽지 않는다
+    if (ok && !allProducts) await loadProducts();
   }
 
   /* --- 상품 표 --- */
@@ -160,20 +181,58 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const storage = getStorage(app);
   const errText = (err) => (err && err.code ? err.code + " — " : "") + (err && err.message ? err.message : String(err));
 
-  // 조건 없이 전부 읽는다 (isVisible 이 false 인 것도 포함)
+  // 읽어 온 상품 전부 [{ id, data }] - 필터 · 검색 · 정렬은 여기서 이 화면이 한다
+  let allProducts = null;
+  const view = { filter: "all", search: "", sort: "" };
+
+  // 조건 없이 전부 읽는다 (isVisible 이 false 인 것 · 품절도 포함)
   async function loadProducts() {
     const status = $("products-status");
     status.textContent = "불러오는 중입니다…";
     try {
       const snap = await getDocs(collection(db, "products"));
-      const tbody = document.querySelector("#products-table tbody");
-      tbody.replaceChildren();
-      snap.docs.forEach(d => tbody.append(...productRows(d.id, d.data())));
-      status.textContent = "상품 " + snap.size + "개";
+      allProducts = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+      status.textContent = "";
+      renderProducts();
     } catch (err) {
       status.textContent = errText(err);
     }
   }
+
+  // 읽어 둔 것에서 필터 · 검색 · 정렬을 겹쳐 적용해 표를 다시 그린다
+  function renderProducts() {
+    if (!allProducts) return;
+    const q = view.search.trim().toLowerCase();
+    let rows = allProducts.filter(({ data }) => {
+      if (view.filter === "soldout" && data.stock !== 0) return false;
+      if (view.filter === "hidden" && data.isVisible !== false) return false;
+      if (q && !String(data.name || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+    if (view.sort === "stock") {
+      // 숫자가 아닌 재고는 맨 뒤로
+      const n = (r) => typeof r.data.stock === "number" ? r.data.stock : Infinity;
+      rows = rows.slice().sort((a, b) => (n(a) === n(b) ? 0 : n(a) < n(b) ? -1 : 1));
+    } else if (view.sort === "name") {
+      rows = rows.slice().sort((a, b) => String(a.data.name || "").localeCompare(String(b.data.name || ""), "ko"));
+    }
+    const tbody = document.querySelector("#products-table tbody");
+    tbody.replaceChildren();
+    rows.forEach(r => tbody.append(...productRows(r.id, r.data)));
+    $("products-count").textContent = "지금 보이는 상품 " + rows.length + "개 / 전체 " + allProducts.length + "개";
+  }
+
+  document.querySelectorAll("[data-filter]").forEach(b => b.addEventListener("click", () => {
+    view.filter = b.dataset.filter;
+    document.querySelectorAll("[data-filter]").forEach(x => {
+      const on = x === b;
+      x.className = on ? "btn" : "btn ghost";
+      x.setAttribute("aria-pressed", String(on));
+    });
+    renderProducts();
+  }));
+  $("products-search").addEventListener("input", (ev) => { view.search = ev.target.value; renderProducts(); });
+  $("products-sort").addEventListener("change", (ev) => { view.sort = ev.target.value; renderProducts(); });
 
   // 사진을 올리기 전에 고른 파일을 살핀다 - 문제가 있으면 그 글을, 없으면 null
   function photoProblem(file) {
