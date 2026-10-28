@@ -48,6 +48,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <p class="auth-status err" id="admin-error" role="alert" hidden style="white-space:pre-wrap;word-break:break-all"></p>
     <p style="margin-top:22px"><button class="btn ghost" type="button" id="btn-recheck">다시 확인</button></p>
+
+    <!-- 상품 표 - 입구가 「관리자: staff」 또는 「관리자: admin」 일 때만 보인다 -->
+    <section id="admin-products" hidden style="margin-top:32px">
+      <h3>상품</h3>
+      <p><button class="btn" type="button" id="btn-new">새 상품</button></p>
+      <form id="new-form" class="pay" hidden>
+        <label for="new-name">name</label>
+        <input id="new-name" required>
+        <label for="new-price">price</label>
+        <input id="new-price" type="number" step="any" required>
+        <label for="new-summary">summary</label>
+        <input id="new-summary">
+        <label for="new-stock">stock</label>
+        <input id="new-stock" type="number" step="1" required>
+        <div class="auth-actions">
+          <button class="btn" type="submit">저장</button>
+          <button class="btn ghost" type="button" id="new-cancel">취소</button>
+        </div>
+        <p class="auth-status err" id="new-error" role="alert" hidden style="white-space:pre-wrap;word-break:break-all"></p>
+      </form>
+      <p class="lead" id="products-status" role="status"></p>
+      <div style="overflow-x:auto">
+        <table id="products-table" style="border-collapse:collapse;width:100%">
+          <thead><tr>
+            <th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </div></main>
 <footer class="site"><div class="wrap"></div></footer>
@@ -56,6 +86,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDgF1bZEceFceNmKJiQL1jmG31HIm-bOwA",
@@ -90,7 +121,172 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     $("admin-denied").hidden = ok;
     $("admin-email").textContent = user.email;
     $("admin-issued").textContent = seoulTime(result.issuedAtTime);
+    // 표는 role 이 staff · admin 일 때만 보인다
+    $("admin-products").hidden = !ok;
+    if (ok) await loadProducts();
   }
+
+  /* --- 상품 표 --- */
+  const db = getFirestore(app);
+  const errText = (err) => (err && err.code ? err.code + " — " : "") + (err && err.message ? err.message : String(err));
+
+  // 조건 없이 전부 읽는다 (isVisible 이 false 인 것도 포함)
+  async function loadProducts() {
+    const status = $("products-status");
+    status.textContent = "불러오는 중입니다…";
+    try {
+      const snap = await getDocs(collection(db, "products"));
+      const tbody = document.querySelector("#products-table tbody");
+      tbody.replaceChildren();
+      snap.docs.forEach(d => tbody.append(...productRows(d.id, d.data())));
+      status.textContent = "상품 " + snap.size + "개";
+    } catch (err) {
+      status.textContent = errText(err);
+    }
+  }
+
+  function el(tag, text, attrs) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    Object.assign(e, attrs || {});
+    return e;
+  }
+
+  // 한 상품은 줄 두 개: 보이는 줄 + (고치기를 누르면 열리는) 고치는 칸 줄
+  function productRows(id, data) {
+    const tr = el("tr");
+    const cell = (node) => { const td = el("td"); td.style.padding = "6px 8px"; td.append(node); tr.append(td); return td; };
+    const err = el("span");
+    err.setAttribute("role", "alert");
+    err.style.cssText = "color:#b3261e;white-space:pre-wrap;word-break:break-all;display:block";
+    const showErr = (e) => { err.textContent = e ? errText(e) : ""; };
+
+    const soldOut = el("input", undefined, { type: "checkbox", checked: data.stock === 0 });
+    const visible = el("input", undefined, { type: "checkbox", checked: data.isVisible === true });
+    const stockCell = el("span", String(data.stock));
+
+    cell(el("code", id));
+    cell(el("span", data.name));
+    cell(el("span", String(data.price)));
+    cell(stockCell);
+    cell(soldOut);
+    cell(visible);
+    const editBtn = el("button", "고치기", { type: "button", className: "btn ghost" });
+    const last = cell(editBtn);
+    last.append(err);
+
+    // 품절 토글: 켜면 stock 0, 끄면 재고 숫자(1 이상 정수)를 물어 저장
+    soldOut.addEventListener("change", async () => {
+      showErr(null);
+      const wantOn = soldOut.checked;
+      let next = 0;
+      if (!wantOn) {
+        const answer = prompt("재고를 몇 개로 할까요? (1 이상 정수)");
+        const n = answer === null ? NaN : Number(answer.trim());
+        if (answer === null || answer.trim() === "" || !Number.isInteger(n) || n < 1) {
+          soldOut.checked = true;
+          if (answer !== null) showErr(new Error("1 이상의 정수만 넣을 수 있습니다"));
+          return;
+        }
+        next = n;
+      }
+      soldOut.disabled = true;
+      try {
+        await updateDoc(doc(db, "products", id), { stock: next });
+        data.stock = next;
+        stockCell.textContent = String(next);
+      } catch (e) {
+        soldOut.checked = !wantOn;
+        showErr(e);
+      }
+      soldOut.disabled = false;
+    });
+
+    // 노출 토글: isVisible 을 true / false 로
+    visible.addEventListener("change", async () => {
+      showErr(null);
+      const want = visible.checked;
+      visible.disabled = true;
+      try {
+        await updateDoc(doc(db, "products", id), { isVisible: want });
+        data.isVisible = want;
+      } catch (e) {
+        visible.checked = !want;
+        showErr(e);
+      }
+      visible.disabled = false;
+    });
+
+    // 고치기: price · summary · stock
+    const editTr = el("tr");
+    editTr.hidden = true;
+    const editTd = el("td", undefined, { colSpan: 7 });
+    editTd.style.padding = "6px 8px";
+    const fPrice = el("input", undefined, { type: "number", step: "any", value: data.price });
+    const fSummary = el("input", undefined, { type: "text", value: data.summary || "" });
+    const fStock = el("input", undefined, { type: "number", step: "1", value: data.stock });
+    const save = el("button", "저장", { type: "button", className: "btn" });
+    const cancel = el("button", "취소", { type: "button", className: "btn ghost" });
+    const editErr = el("span");
+    editErr.setAttribute("role", "alert");
+    editErr.style.cssText = "color:#b3261e;white-space:pre-wrap;word-break:break-all;display:block";
+    const lab = (t, input) => { const l = el("label", t + " "); l.style.marginRight = "10px"; l.append(input); return l; };
+    editTd.append(lab("price", fPrice), lab("summary", fSummary), lab("stock", fStock), save, cancel, editErr);
+    editTr.append(editTd);
+
+    editBtn.addEventListener("click", () => { editTr.hidden = !editTr.hidden; });
+    cancel.addEventListener("click", () => { editTr.hidden = true; });
+    save.addEventListener("click", async () => {
+      editErr.textContent = "";
+      showErr(null);
+      const price = Number(fPrice.value);
+      const stock = Number(fStock.value);
+      if (fPrice.value.trim() === "" || !(price > 0)) { editErr.textContent = "price 는 0보다 큰 숫자여야 합니다"; return; }
+      if (fStock.value.trim() === "" || !Number.isInteger(stock) || stock < 0) { editErr.textContent = "stock 은 0 이상의 정수여야 합니다"; return; }
+      save.disabled = true;
+      try {
+        // 숫자는 숫자로 저장한다 (글자로 저장하지 않는다)
+        await updateDoc(doc(db, "products", id), { price: price, summary: fSummary.value, stock: stock });
+        await loadProducts();
+      } catch (e) {
+        editErr.textContent = errText(e);
+        showErr(e);
+      }
+      save.disabled = false;
+    });
+
+    return [tr, editTr];
+  }
+
+  // 새 상품: 문서 ID 는 자동, isVisible 은 false, createdAt 은 서버 시각
+  $("btn-new").addEventListener("click", () => { $("new-form").hidden = !$("new-form").hidden; });
+  $("new-cancel").addEventListener("click", () => { $("new-form").hidden = true; });
+  $("new-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const errEl = $("new-error");
+    errEl.hidden = true;
+    const price = Number($("new-price").value);
+    const stock = Number($("new-stock").value);
+    const fail = (t) => { errEl.textContent = t; errEl.hidden = false; };
+    if (!$("new-name").value.trim()) return fail("name 을 넣어 주세요");
+    if ($("new-price").value.trim() === "" || !(price > 0)) return fail("price 는 0보다 큰 숫자여야 합니다");
+    if ($("new-stock").value.trim() === "" || !Number.isInteger(stock) || stock < 0) return fail("stock 은 0 이상의 정수여야 합니다");
+    try {
+      await addDoc(collection(db, "products"), {
+        name: $("new-name").value.trim(),
+        price: price,
+        summary: $("new-summary").value,
+        stock: stock,
+        isVisible: false,
+        createdAt: serverTimestamp()
+      });
+      $("new-form").reset();
+      $("new-form").hidden = true;
+      await loadProducts();
+    } catch (e) {
+      fail(errText(e));
+    }
+  });
 
   // issuedAtTime 은 UTC 글자(예: "Wed, 28 Oct 2026 03:04:05 GMT")라서 서울 시각으로 바꿔 적는다
   function seoulTime(text) {

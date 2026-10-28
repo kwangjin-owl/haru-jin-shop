@@ -215,52 +215,8 @@ function setupOrder() {
   });
 }
 
-/* --- 상품 올리기 (로그인한 사람에게만 단추가 보인다 - 보이고 숨기는 일은 auth.js 가 한다) --- */
-// p2~p6 의 재고와 보이기 값 - p1 은 이미 있어 건드리지 않는다
-const SEED = {
-  p2: { stock: 30, isVisible: true },
-  p3: { stock: 8,  isVisible: true },
-  p4: { stock: 0,  isVisible: true },
-  p5: { stock: 5,  isVisible: false },
-  p6: { stock: 40, isVisible: true }
-};
-
-function setupUpload() {
-  const btn = document.querySelector("#upload-products");
-  const msg = document.querySelector("#upload-message");
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
-    msg.textContent = "올리는 중입니다…";
-    btn.disabled = true;
-    try {
-      const ids = Object.keys(SEED);
-      // 한 거래(transaction) 안에서 한 번에 - 다섯 장이 다 올라가거나 하나도 안 올라간다
-      await runTransaction(db, async (t) => {
-        const refs = ids.map(id => doc(db, "products", id));
-        const snaps = await Promise.all(refs.map(r => t.get(r)));
-        // 이미 있는 문서를 덮어쓰지 않는다
-        const exist = snaps.filter(s => s.exists()).map(s => s.id);
-        if (exist.length) throw new Error("이미 올라가 있는 상품이 있어 하나도 올리지 않았습니다: " + exist.join(", "));
-        ids.forEach((id, i) => {
-          const p = findProduct(id);
-          t.set(refs[i], {
-            name: p.name, price: p.price, summary: p.summary,
-            stock: SEED[id].stock, isVisible: SEED[id].isVisible,
-            createdAt: serverTimestamp()
-          });
-        });
-      });
-      msg.textContent = "상품 " + ids.length + "장을 올렸습니다: " + ids.join(", ");
-      loadList();
-    } catch (err) {
-      msg.textContent = errorText(err);
-    }
-    btn.disabled = false;
-  });
-}
-
 function run() {
-  if (document.querySelector("#product-list")) { loadList(); setupMore(); setupUpload(); }
+  if (document.querySelector("#product-list")) { loadList(); setupMore(); }
   if (document.querySelector("#product-detail")) loadDetail();
 }
 // app.js 의 「불러오는 중」 그리기가 먼저 끝난 뒤에 읽는다
