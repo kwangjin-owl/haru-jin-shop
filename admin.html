@@ -114,6 +114,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <option value="">읽어 온 순서</option>
           <option value="stock">재고 적은 순</option>
           <option value="name">이름순</option>
+          <option value="updated">최근에 고친 순</option>
         </select>
       </div>
       <p class="lead" id="products-count" role="status" style="margin:0 0 10px"></p>
@@ -213,6 +214,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       // 숫자가 아닌 재고는 맨 뒤로
       const n = (r) => typeof r.data.stock === "number" ? r.data.stock : Infinity;
       rows = rows.slice().sort((a, b) => (n(a) === n(b) ? 0 : n(a) < n(b) ? -1 : 1));
+    } else if (view.sort === "updated") {
+      // updatedAt 이 늦은 것이 위, updatedAt 이 없는 것은 맨 아래
+      const t = (r) => {
+        const u = r.data.updatedAt;
+        return u && typeof u.toMillis === "function" ? u.toMillis() : u instanceof Date ? u.getTime() : -Infinity;
+      };
+      rows = rows.slice().sort((a, b) => (t(a) === t(b) ? 0 : t(a) > t(b) ? -1 : 1));
     } else if (view.sort === "name") {
       rows = rows.slice().sort((a, b) => String(a.data.name || "").localeCompare(String(b.data.name || ""), "ko"));
     }
@@ -313,8 +321,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       }
       soldOut.disabled = true;
       try {
-        await updateDoc(doc(db, "products", id), { stock: next });
+        await updateDoc(doc(db, "products", id), { stock: next, updatedAt: serverTimestamp() });
         data.stock = next;
+        data.updatedAt = new Date();
         stockCell.textContent = String(next);
       } catch (e) {
         soldOut.checked = !wantOn;
@@ -329,8 +338,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const want = visible.checked;
       visible.disabled = true;
       try {
-        await updateDoc(doc(db, "products", id), { isVisible: want });
+        await updateDoc(doc(db, "products", id), { isVisible: want, updatedAt: serverTimestamp() });
         data.isVisible = want;
+        data.updatedAt = new Date();
       } catch (e) {
         visible.checked = !want;
         showErr(e);
@@ -379,11 +389,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       save.disabled = true;
       try {
         // 숫자는 숫자로 저장한다 (글자로 저장하지 않는다)
-        await updateDoc(doc(db, "products", id), { price: price, summary: fSummary.value, stock: stock });
+        await updateDoc(doc(db, "products", id), { price: price, summary: fSummary.value, stock: stock, updatedAt: serverTimestamp() });
         if (photo) {
           // 같은 경로에 덮어 올리고, 다 올라간 뒤에만 imagePath 를 저장한다
           const path = await uploadPhoto(id, photo, (n) => { editProgress.textContent = "올리는 중 " + n + " %"; });
-          await updateDoc(doc(db, "products", id), { imagePath: path });
+          await updateDoc(doc(db, "products", id), { imagePath: path, updatedAt: serverTimestamp() });
         }
         await loadProducts();
       } catch (e) {
@@ -396,7 +406,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return [tr, editTr];
   }
 
-  // 새 상품: 문서 ID 는 자동, isVisible 은 false, createdAt 은 서버 시각
+  // 새 상품: 문서 ID 는 자동, isVisible 은 false, createdAt · updatedAt 은 서버 시각
   $("btn-new").addEventListener("click", () => { $("new-form").hidden = !$("new-form").hidden; });
   $("new-cancel").addEventListener("click", () => { $("new-form").hidden = true; });
   $("new-form").addEventListener("submit", async (ev) => {
@@ -421,13 +431,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         summary: $("new-summary").value,
         stock: stock,
         isVisible: false,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       // 2) 그 문서 ID 로 사진을 올리고 3) 다 올라간 뒤에 imagePath 를 저장한다
       if (photo) {
         try {
           const path = await uploadPhoto(created.id, photo, (n) => { $("new-progress").textContent = "올리는 중 " + n + " %"; });
-          await updateDoc(created, { imagePath: path });
+          await updateDoc(created, { imagePath: path, updatedAt: serverTimestamp() });
         } catch (e) {
           // 사진이 실패하면 imagePath 는 적지 않는다 - 문서는 만들어진 채로 둔다
           $("new-form").reset();
