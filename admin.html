@@ -55,6 +55,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   dialog#takedown-dialog .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
   #activity-table th,#activity-table td{padding:10px 12px;vertical-align:middle}
   #activity-table td.when{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tab-bar{display:flex;gap:8px;margin:28px 0 0}
+  .tab-bar .btn{padding:8px 20px;font-size:14.5px}
+  body[data-tab="orders"] #admin-products{display:none !important}
+  #admin-orders{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+  #admin-orders[hidden]{display:none}
+  #orders-table tbody tr{cursor:pointer}
+  #orders-table tbody tr:hover td{background:#f8f4ec}
+  #orders-table th.num,#orders-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  #orders-table td.when{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .order-detail{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 18px}
+  .order-detail dl{display:grid;grid-template-columns:150px 1fr;gap:8px 14px;margin:0 0 14px}
+  .order-detail dt{color:var(--sub);font-size:13.5px}
+  .order-detail dd{margin:0;word-break:break-all}
+  .order-detail ul{margin:0;padding-left:18px}
+  .order-detail .detail-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  dialog#status-dialog{border:1px solid var(--line);border-radius:12px;padding:22px;max-width:420px;background:var(--card);color:var(--ink)}
+  dialog#status-dialog::backdrop{background:rgba(0,0,0,.35)}
+  dialog#status-dialog p{margin:0 0 18px;word-break:break-all}
+  dialog#status-dialog .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
   #new-form{margin:0 0 20px}
   #new-form input[type=file]{padding:9px 0;border:0}
 </style>
@@ -92,6 +111,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p style="margin:0"><button class="btn ghost" type="button" id="btn-recheck">다시 확인</button></p>
 
     <!-- 상품 표 - 입구가 「관리자: staff」 또는 「관리자: admin」 일 때만 보인다 -->
+    <div class="tab-bar" id="admin-tabs" role="tablist" hidden>
+      <button class="btn" type="button" role="tab" data-tab="products" aria-selected="true">상품</button>
+      <button class="btn ghost" type="button" role="tab" data-tab="orders" aria-selected="false">주문</button>
+    </div>
     <section id="admin-products" hidden style="margin-top:36px;padding-top:24px;border-top:1px solid var(--line)">
       <h3>상품</h3>
       <p style="margin:0 0 16px"><button class="btn" type="button" id="btn-new">새 상품</button></p>
@@ -152,8 +175,39 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </div>
     </section>
+
+    <!-- 주문 탭 -->
+    <section id="admin-orders" hidden>
+      <h3>주문</h3>
+      <div class="filter-bar">
+        <select id="orders-status" aria-label="주문 상태">
+          <option value="">전체</option>
+          <option value="paid">paid</option>
+          <option value="preparing">preparing</option>
+          <option value="shipped">shipped</option>
+          <option value="delivered">delivered</option>
+          <option value="canceled">canceled</option>
+        </select>
+      </div>
+      <div id="order-detail" class="order-detail" hidden></div>
+      <p class="lead" id="orders-message" role="status" style="margin:0 0 10px"></p>
+      <div style="overflow-x:auto">
+        <table class="cart" id="orders-table" hidden>
+          <thead><tr><th>주문 번호</th><th class="num">금액</th><th>상태</th><th>주문 시각</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p style="margin:16px 0 0"><button class="btn ghost" type="button" id="orders-more" hidden>더 보기</button></p>
+    </section>
   </div>
 </div></main>
+<dialog id="status-dialog">
+  <p id="status-text"></p>
+  <div class="dlg-actions">
+    <button class="btn ghost" type="button" id="status-cancel">그만두기</button>
+    <button class="btn" type="button" id="status-ok">바꾸기</button>
+  </div>
+</dialog>
 <dialog id="takedown-dialog">
   <p id="takedown-text"></p>
   <div class="dlg-actions">
@@ -172,7 +226,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
-  import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, deleteField, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, deleteField, query, orderBy, limit, where, startAfter, getDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
   const firebaseConfig = {
@@ -210,6 +264,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     $("admin-issued").textContent = seoulTime(result.issuedAtTime);
     // 표는 role 이 staff · admin 일 때만 보인다
     $("admin-products").hidden = !ok;
+    // 탭 줄은 staff · admin 일 때만 보인다
+    $("admin-tabs").hidden = !ok;
+    if (!ok) $("admin-orders").hidden = true;
     // 처음 한 번만 읽는다 - 「다시 확인」을 눌러도 다시 읽지 않는다
     if (ok && !allProducts) { await loadProducts(); loadActivity(); }
   }
@@ -376,6 +433,154 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
   }
   $("btn-activity").addEventListener("click", loadActivity);
+
+  /* --- 탭: 상품(최근 활동 포함) · 주문 --- */
+  let ordersLoaded = false;
+  document.querySelectorAll("#admin-tabs [data-tab]").forEach(b => b.addEventListener("click", () => {
+    const tab = b.dataset.tab;
+    document.body.dataset.tab = tab;
+    document.querySelectorAll("#admin-tabs [data-tab]").forEach(x => {
+      const on = x === b;
+      x.className = on ? "btn" : "btn ghost";
+      x.setAttribute("aria-selected", String(on));
+    });
+    $("admin-orders").hidden = tab !== "orders";
+    // 주문 탭을 처음 열 때 처음 20개를 읽는다
+    if (tab === "orders" && !ordersLoaded) { ordersLoaded = true; loadOrders(true); }
+  }));
+
+  /* --- 주문 목록: createdAt 최근순 20개씩. 상태는 Firestore 에 where 로 물어 읽는다 --- */
+  const ORDERS_PAGE = 20;
+  const orders = { status: "", last: null, serial: 0 };
+  const NEXT_STATUS = {
+    paid: { to: "preparing", label: "포장 시작" },
+    preparing: { to: "shipped", label: "배송 시작" },
+    shipped: { to: "delivered", label: "배송 완료" }
+  };
+  const when = (ts) => ts && typeof ts.toDate === "function" ? seoulTime(ts.toDate()) : "-";
+
+  async function loadOrders(fresh) {
+    const msg = $("orders-message");
+    const more = $("orders-more");
+    const table = $("orders-table");
+    const tbody = table.querySelector("tbody");
+    if (fresh) {
+      orders.last = null;
+      tbody.replaceChildren();
+      table.hidden = true;
+      more.hidden = true;
+      $("order-detail").hidden = true;
+    }
+    const serial = ++orders.serial;
+    msg.textContent = "불러오는 중입니다…";
+    try {
+      const parts = [collection(db, "orders")];
+      if (orders.status) parts.push(where("status", "==", orders.status));
+      parts.push(orderBy("createdAt", "desc"));
+      if (orders.last) parts.push(startAfter(orders.last));
+      parts.push(limit(ORDERS_PAGE));
+      const snap = await getDocs(query(...parts));
+      // 그 사이 상태를 다시 골랐으면 이 답은 버린다
+      if (serial !== orders.serial) return;
+      snap.docs.forEach(d => tbody.append(orderRow(d.id, d.data())));
+      if (snap.size > 0) orders.last = snap.docs[snap.docs.length - 1];
+      table.hidden = tbody.children.length === 0;
+      more.hidden = snap.size < ORDERS_PAGE;
+      msg.textContent = tbody.children.length === 0 ? "주문이 없습니다" : "";
+    } catch (err) {
+      // 색인을 만들라는 링크가 그대로 보이도록 오류는 줄이지 않고 콘솔에 남긴다
+      console.error(err);
+      if (serial === orders.serial) msg.textContent = "주문을 불러오지 못했습니다. 콘솔을 확인해 주세요.";
+    }
+  }
+
+  function orderRow(id, data) {
+    const tr = el("tr");
+    tr.append(
+      el("td", id),
+      el("td", String(data.totalPrice), { className: "num" }),
+      el("td", String(data.status)),
+      el("td", when(data.createdAt), { className: "when" })
+    );
+    tr.addEventListener("click", () => showOrder(id));
+    return tr;
+  }
+
+  $("orders-status").addEventListener("change", (ev) => { orders.status = ev.target.value; loadOrders(true); });
+  $("orders-more").addEventListener("click", () => loadOrders(false));
+
+  /* --- 주문 상세 --- */
+  async function showOrder(id) {
+    const box = $("order-detail");
+    box.hidden = false;
+    box.textContent = "불러오는 중입니다…";
+    try {
+      const snap = await getDoc(doc(db, "orders", id));
+      if (!snap.exists()) { box.textContent = "그 주문이 없습니다"; return; }
+      paintOrder(id, snap.data(), box);
+      box.scrollIntoView({ block: "nearest" });
+    } catch (err) {
+      console.error(err);
+      box.textContent = "주문을 불러오지 못했습니다. 콘솔을 확인해 주세요.";
+    }
+  }
+
+  function paintOrder(id, d, box) {
+    box.replaceChildren();
+    const dl = el("dl");
+    const row = (label, node) => { dl.append(el("dt", label)); const dd = el("dd"); dd.append(node); dl.append(dd); };
+    const text = (t) => document.createTextNode(String(t));
+    row("주문 번호", text(id));
+    const ul = el("ul");
+    (Array.isArray(d.items) ? d.items : []).forEach(it => {
+      ul.append(el("li", (it.name || it.productId || "-") + " × " + (it.quantity ?? "-") + " (" + (it.price ?? "-") + ")"));
+    });
+    row("산 것", ul);
+    row("금액", text(d.totalPrice));
+    row("상태", text(d.status));
+    row("받은 시각", text(when(d.receivedAt)));
+    row("처리 표시", text(d.processStatus || "-" ));
+    if (d.processError) row("처리 오류", text(d.processError));
+    if (d.mailStatus) row("메일 표시", text(d.mailStatus));
+    if (d.statusUpdatedAt) row("상태를 바꾼 시각", text(when(d.statusUpdatedAt)));
+    box.append(dl);
+
+    // 지금 상태에서 다음으로 갈 버튼 하나만 (delivered · canceled 는 없음)
+    const next = NEXT_STATUS[d.status];
+    if (next) {
+      const actions = el("div", undefined, { className: "detail-actions" });
+      const btn = el("button", next.label, { type: "button", className: "btn" });
+      const err = el("span", undefined, { className: "row-msg" });
+      btn.addEventListener("click", () => askStatus(id, next.to, box, err));
+      actions.append(btn, err);
+      box.append(actions);
+    }
+  }
+
+  const statusDlg = $("status-dialog");
+  let statusPending = null;
+  function askStatus(id, to, box, err) {
+    statusPending = { id, to, box, err };
+    $("status-text").textContent = "주문 " + id + "를 " + to + "로 바꿉니다";
+    statusDlg.showModal();
+  }
+  $("status-cancel").addEventListener("click", () => { statusPending = null; statusDlg.close(); });
+  $("status-ok").addEventListener("click", async () => {
+    const t = statusPending;
+    statusPending = null;
+    statusDlg.close();
+    if (!t) return;
+    t.err.textContent = "";
+    try {
+      // status 와 statusUpdatedAt 두 필드만, 시각은 서버 시각
+      await updateDoc(doc(db, "orders", t.id), { status: t.to, statusUpdatedAt: serverTimestamp() });
+      // 고친 뒤 상세를 새로 불러와 새 상태와 다음 버튼을 보여 준다
+      await showOrder(t.id);
+    } catch (e) {
+      console.error(e);
+      t.err.textContent = "상태를 바꾸지 못했습니다. 콘솔을 확인해 주세요.";
+    }
+  });
 
   // 사진을 올리기 전에 고른 파일을 살핀다 - 문제가 있으면 그 글을, 없으면 null
   function photoProblem(file) {
