@@ -213,6 +213,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <h3>매출</h3>
       <p class="sales-note lead" id="sales-note" role="status"></p>
       <div class="sales-chart"><canvas id="sales-chart" aria-label="최근 7일 매출 막대 차트" role="img"></canvas></div>
+      <p class="lead" id="sales-total" style="margin:0 0 14px"></p>
       <div style="overflow-x:auto">
         <table class="cart" id="sales-table" hidden>
           <thead><tr><th>날짜</th><th class="num">건수</th><th class="num">매출</th><th>센 시각</th></tr></thead>
@@ -677,6 +678,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
       });
     }
+
+    // 차트 아래 한 줄 - 이미 읽은 일곱 장만 더한다 (문서가 없는 날은 빼고)
+    const counted = days.filter(d => d.data);
+    const sumSales = counted.reduce((a, d) => a + (Number(d.data.totalSales) || 0), 0);
+    const sumCount = counted.reduce((a, d) => a + (Number(d.data.orderCount) || 0), 0);
+    const missing = days.length - counted.length;
+    $("sales-total").textContent = "최근 7일 합계 " + sumSales.toLocaleString("ko-KR") + "원 - 주문 " + sumCount.toLocaleString("ko-KR") + "건 ("
+      + (missing === 0 ? "집계 없는 날 없음" : "집계 없는 날 " + missing + "일은 빼고 더함") + ")";
 
     // 차트 아래 표
     const table = $("sales-table");
