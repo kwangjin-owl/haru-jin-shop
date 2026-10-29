@@ -57,7 +57,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   #activity-table td.when{white-space:nowrap;font-variant-numeric:tabular-nums}
   .tab-bar{display:flex;gap:8px;margin:28px 0 0}
   .tab-bar .btn{padding:8px 20px;font-size:14.5px}
-  body[data-tab="orders"] #admin-products{display:none !important}
+  body[data-tab="orders"] #admin-products,body[data-tab="sales"] #admin-products{display:none !important}
   #admin-orders{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
   #admin-orders[hidden]{display:none}
   #orders-table tbody tr{cursor:pointer}
@@ -74,6 +74,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   dialog#status-dialog::backdrop{background:rgba(0,0,0,.35)}
   dialog#status-dialog p{margin:0 0 18px;word-break:break-all}
   dialog#status-dialog .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
+  #admin-sales{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+  #admin-sales[hidden]{display:none}
+  .sales-note{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin:0 0 14px}
+  .sales-chart{position:relative;height:320px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 18px}
+  #sales-table th.num,#sales-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  #sales-table td.when{white-space:nowrap;font-variant-numeric:tabular-nums}
+  #sales-table td.none{color:var(--sub)}
   #new-form{margin:0 0 20px}
   #new-form input[type=file]{padding:9px 0;border:0}
 </style>
@@ -114,6 +121,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="tab-bar" id="admin-tabs" role="tablist" hidden>
       <button class="btn" type="button" role="tab" data-tab="products" aria-selected="true">상품</button>
       <button class="btn ghost" type="button" role="tab" data-tab="orders" aria-selected="false">주문</button>
+      <button class="btn ghost" type="button" role="tab" data-tab="sales" aria-selected="false">매출</button>
     </div>
     <section id="admin-products" hidden style="margin-top:36px;padding-top:24px;border-top:1px solid var(--line)">
       <h3>상품</h3>
@@ -199,6 +207,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
       <p style="margin:16px 0 0"><button class="btn ghost" type="button" id="orders-more" hidden>더 보기</button></p>
     </section>
+
+    <!-- 매출 탭 - 집계 문서 dailyStats 만 읽는다 (orders 는 읽지 않는다) -->
+    <section id="admin-sales" hidden>
+      <h3>매출</h3>
+      <p class="sales-note lead" id="sales-note" role="status"></p>
+      <div class="sales-chart"><canvas id="sales-chart" aria-label="최근 7일 매출 막대 차트" role="img"></canvas></div>
+      <div style="overflow-x:auto">
+        <table class="cart" id="sales-table" hidden>
+          <thead><tr><th>날짜</th><th class="num">건수</th><th class="num">매출</th><th>센 시각</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </div></main>
 <dialog id="status-dialog">
@@ -222,6 +243,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 <footer class="site"><div class="wrap"></div></footer>
 <script src="assets/consent-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -266,7 +288,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     $("admin-products").hidden = !ok;
     // 탭 줄은 staff · admin 일 때만 보인다
     $("admin-tabs").hidden = !ok;
-    if (!ok) $("admin-orders").hidden = true;
+    if (!ok) { $("admin-orders").hidden = true; $("admin-sales").hidden = true; }
     // 처음 한 번만 읽는다 - 「다시 확인」을 눌러도 다시 읽지 않는다
     if (ok && !allProducts) { await loadProducts(); loadActivity(); }
   }
@@ -436,6 +458,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   /* --- 탭: 상품(최근 활동 포함) · 주문 --- */
   let ordersLoaded = false;
+  let salesLoaded = false;
   document.querySelectorAll("#admin-tabs [data-tab]").forEach(b => b.addEventListener("click", () => {
     const tab = b.dataset.tab;
     document.body.dataset.tab = tab;
@@ -445,8 +468,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       x.setAttribute("aria-selected", String(on));
     });
     $("admin-orders").hidden = tab !== "orders";
+    $("admin-sales").hidden = tab !== "sales";
     // 주문 탭을 처음 열 때 처음 20개를 읽는다
     if (tab === "orders" && !ordersLoaded) { ordersLoaded = true; loadOrders(true); }
+    // 매출 탭을 처음 열 때 한 번 읽는다
+    if (tab === "sales" && !salesLoaded) { salesLoaded = true; loadSales(); }
   }));
 
   /* --- 주문 목록: createdAt 최근순 20개씩. 상태는 Firestore 에 where 로 물어 읽는다 --- */
@@ -581,6 +607,98 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       t.err.textContent = "상태를 바꾸지 못했습니다. 콘솔을 확인해 주세요.";
     }
   });
+
+  /* --- 매출: 집계 문서 dailyStats 만 읽는다. 어제(한국 날짜)부터 거꾸로 7일, 날짜마다 한 장 --- */
+  let salesChart = null;
+
+  // 어제부터 거꾸로 7일의 문서 이름(20261028 꼴) - 오래된 날이 앞
+  function lastSevenDayIds() {
+    const nowSeoul = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const y = nowSeoul.getUTCFullYear(), m = nowSeoul.getUTCMonth(), d = nowSeoul.getUTCDate();
+    const ids = [];
+    for (let back = 7; back >= 1; back--) {
+      const day = new Date(Date.UTC(y, m, d - back));
+      ids.push(String(day.getUTCFullYear()) + String(day.getUTCMonth() + 1).padStart(2, "0") + String(day.getUTCDate()).padStart(2, "0"));
+    }
+    return ids;
+  }
+  const dayText = (id) => id.slice(0, 4) + "-" + id.slice(4, 6) + "-" + id.slice(6, 8);
+
+  async function loadSales() {
+    const note = $("sales-note");
+    note.textContent = "불러오는 중입니다…";
+    try {
+      const ids = lastSevenDayIds();
+      const snaps = await Promise.all(ids.map(id => getDoc(doc(db, "dailyStats", id))));
+      const days = ids.map((id, i) => ({ id, data: snaps[i].exists() ? snaps[i].data() : null }));
+      paintSales(days);
+    } catch (err) {
+      // 오류는 줄이지 않고 콘솔에 그대로 남기고, 화면에는 한 줄만 보여 준다
+      console.error(err);
+      note.textContent = "매출을 불러오지 못했습니다. 콘솔을 확인해 주세요.";
+    }
+  }
+
+  function paintSales(days) {
+    // 차트 위 한 줄 - 가장 최근 문서 기준
+    const latest = days.slice().reverse().find(d => d.data);
+    const note = $("sales-note");
+    note.replaceChildren();
+    if (latest) {
+      note.append(
+        el("span", dayText(latest.id) + "까지의 매출입니다 - 매일 00:05에 전날을 셉니다"),
+        el("span", "마지막으로 센 시각: " + when(latest.data.countedAt))
+      );
+    } else {
+      note.textContent = "아직 집계가 없습니다 - 매일 00:05에 전날을 셉니다";
+    }
+
+    // 막대 차트 - 문서가 없는 날은 null 로 비워 두고 날짜 아래에 「집계 없음」
+    if (!window.Chart) {
+      console.error(new Error("차트 도구를 불러오지 못했습니다 (chart.js 4.4.1)"));
+      note.textContent = "차트를 그리지 못했습니다. 콘솔을 확인해 주세요.";
+    } else {
+      if (salesChart) salesChart.destroy();
+      salesChart = new Chart($("sales-chart"), {
+        type: "bar",
+        data: {
+          labels: days.map(d => d.data ? dayText(d.id).slice(5) : [dayText(d.id).slice(5), "집계 없음"]),
+          datasets: [{
+            label: "매출",
+            data: days.map(d => d.data ? Number(d.data.totalSales) || 0 : null),
+            backgroundColor: "#8a5a2b"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { callback: (v) => Number(v).toLocaleString("ko-KR") } } }
+        }
+      });
+    }
+
+    // 차트 아래 표
+    const table = $("sales-table");
+    const tbody = table.querySelector("tbody");
+    tbody.replaceChildren();
+    days.forEach(({ id, data }) => {
+      const tr = el("tr");
+      if (!data) {
+        tr.append(el("td", dayText(id)), el("td", "집계 없음", { className: "none" }), el("td", "집계 없음", { className: "none" }), el("td", "집계 없음", { className: "none" }));
+      } else {
+        const count = String(data.orderCount) + (data.canceledCount !== undefined ? " (취소 " + data.canceledCount + ")" : "");
+        tr.append(
+          el("td", dayText(id)),
+          el("td", count, { className: "num" }),
+          el("td", (Number(data.totalSales) || 0).toLocaleString("ko-KR"), { className: "num" }),
+          el("td", when(data.countedAt), { className: "when" })
+        );
+      }
+      tbody.append(tr);
+    });
+    table.hidden = false;
+  }
 
   // 사진을 올리기 전에 고른 파일을 살핀다 - 문제가 있으면 그 글을, 없으면 null
   function photoProblem(file) {
